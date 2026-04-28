@@ -1,0 +1,186 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  CLIENT
+  SUPPLIER
+}
+
+enum OrderStatus {
+  PENDING
+  APPROVED
+  SHIPPED
+  DELIVERED
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role     @default(CLIENT)
+  isActive  Boolean  @default(true)
+
+  // Relations — core
+  products  Product[] @relation("SupplierProducts")
+  orders    Order[]   @relation("ClientOrders")
+
+  // Relations — supplier registration
+  reviewedApplications SupplierApplication[]      // Solicitudes que revisó como admin
+  approvedApplication  SupplierApplication? @relation("ApprovedSupplier")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  REGISTRO DE PROVEEDORES — Modelos nuevos
+// ═══════════════════════════════════════════════════════════════════════════
+
+enum ApplicationStatus {
+  PENDING          // Solicitud recibida — en cola para revisión
+  REVIEWING        // Admin tomó el caso — lock optimista activo
+  ACTION_REQUIRED  // El admin detectó un problema — prospecto debe corregir
+  REJECTED         // Rechazo definitivo — no reversible
+  APPROVED         // Aprobado — se crea la cuenta User SUPPLIER
+}
+
+model SupplierApplication {
+  id  String @id @default(cuid())
+
+  // ── Paso 1: Información de la empresa ─────────────────────────────────
+  companyName  String
+  rfc          String
+  website      String?
+  category     String   // ej. "manufactura", "logística", "alimentaria"
+
+  // ── Contacto principal ────────────────────────────────────────────────
+  contactName  String
+  contactEmail String
+  contactPhone String
+  country      String
+  state        String
+  city         String
+  address      String?
+
+  // ── Paso 2: Capacidad ─────────────────────────────────────────────────
+  monthlyCapacity Int
+  capacityUnit    String        // "piezas", "kg", "toneladas"
+  leadTimeDays    Int
+  hasExportExp    Boolean       @default(false)
+  description     String?       @db.Text
+  certifications  String[]      // ["ISO 9001:2015", "HACCP", ...]
+
+  // ── Máquina de estados ────────────────────────────────────────────────
+  status ApplicationStatus @default(PENDING)
+
+  // ── Flujo de corrección parcial ───────────────────────────────────────
+  actionNote           String?           // Motivo documentado por el admin
+  actionToken          String?  @unique  // Token de un solo uso para el link de corrección
+  actionTokenExpiresAt DateTime?         // TTL 72 h — nulo tras ser consumido
+
+  // ── Lock optimista de revisión ────────────────────────────────────────
+  reviewerId      Int?
+  reviewer        User?     @relation(fields: [reviewerId], references: [id])
+  reviewStartedAt DateTime? // Momento en que status → REVIEWING
+  reviewedAt      DateTime? // Momento de la decisión final
+
+  // ── Anti-spam ─────────────────────────────────────────────────────────
+  // ⚠️  MOCK en entorno local: siempre 0.9 (inyectado por verifyCaptcha.js).
+  //     En producción vendría de la API de Google reCAPTCHA v3.
+  captchaScore    Float?
+  submittedFromIp String?
+
+  // ── Relaciones ────────────────────────────────────────────────────────
+  documents ApplicationDocument[]
+
+  // Vínculo al User real creado al aprobar (único por solicitud)
+  approvedUserId Int?  @unique
+  approvedUser   User? @relation("ApprovedSupplier", fields: [approvedUserId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ApplicationDocument {
+  id            String              @id @default(cuid())
+  applicationId String
+  application   SupplierApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  label        String  // "RFC", "Acta Constitutiva", "ISO 9001", etc.
+
+  // ── Almacenamiento local (privado) ────────────────────────────────────
+  // ⚠️  filePath = ruta absoluta en disco del servidor.
+  //     NUNCA se incluye en respuestas JSON (el DTO lo elimina).
+  //     El acceso ocurre exclusivamente vía GET /admin/.../download.
+  filePath     String  // ej: "/abs/path/storage/uploads/private/abc-rfc.pdf"
+  originalName String  // Nombre original para Content-Disposition
+  mimeType     String
+  sizeBytes    Int
+  uploadedAt   DateTime @default(now())
+
+  // Auditoría de acceso administrativo
+  lastAccessedAt DateTime?
+  lastAccessedBy Int?      // FK implícita → User (admin que descargó)
+}
+
+
+
+model Product {
+  id             Int      @id @default(autoincrement())
+  name           String
+  description    String?
+  price          Float             // Precio cliente (con margen)
+  supplierPrice  Float  @default(0) // Costo real del proveedor
+  stock          Int      @default(0)
+
+  // Relations
+  supplierId  Int
+  supplier    User     @relation("SupplierProducts", fields: [supplierId], references: [id])
+  orderItems  OrderItem[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Order {
+  id             Int         @id @default(autoincrement())
+  status         OrderStatus @default(PENDING)
+  totalAmount    Float       @default(0) // = clientAmount (compatibilidad)
+  clientAmount   Float       @default(0) // Lo que paga el cliente
+  supplierAmount Float       @default(0) // Costo real del proveedor
+
+  // Relations
+  clientId    Int
+  client      User        @relation("ClientOrders", fields: [clientId], references: [id])
+  orderItems  OrderItem[]
+
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model OrderItem {
+  id                Int      @id @default(autoincrement())
+  quantity          Int      @default(1)
+  unitPrice         Float             // Precio unitario cliente (con margen)
+  supplierUnitPrice Float  @default(0) // Costo unitario del proveedor
+
+  // Relations
+  orderId   Int
+  order     Order    @relation(fields: [orderId], references: [id])
+  productId Int
+  product   Product  @relation(fields: [productId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
