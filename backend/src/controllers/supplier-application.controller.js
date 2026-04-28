@@ -157,4 +157,21 @@ const applyActionCorrection = async (req, res) => {
   }
 };
 
-module.exports = { createApplication, getApplicationStatus, applyActionCorrection };
+/**
+ * GET /api/supplier-applications/action/:token
+ *
+ * Obtiene los datos de la solicitud para pre-rellenar el formulario de corrección.
+ * Solo responde si el token es válido, no expirado y el estado es ACTION_REQUIRED.
+ */
+const getApplicationByToken = async (req, res) => {
+  try {
+    const application = await service.getApplicationByToken(req.params.token);
+    res.status(200).json({ data: formatForPublic(application) });
+  } catch (err) {
+    sendError(res, err);
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+module.exports = { createApplication, getApplicationStatus, applyActionCorrection, getApplicationByToken };

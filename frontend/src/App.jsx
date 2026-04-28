@@ -10,7 +10,11 @@ import ProductsPage           from './pages/ProductsPage';
 import AdminUsersPage         from './pages/AdminUsersPage';
 import AdminOrdersPage        from './pages/AdminOrdersPage';
 import CheckStatusPage        from './pages/CheckStatusPage';
+import ChangePasswordPage     from './pages/ChangePasswordPage';
+import CompleteProfilePage    from './pages/CompleteProfilePage';
+import UserProfilePage        from './pages/UserProfilePage';
 import RegistrationPage       from './features/supplier-registration/pages/RegistrationPage';
+import CorrectionPage         from './features/supplier-registration/pages/CorrectionPage';
 import ApplicationsListPage   from './features/admin/pages/ApplicationsListPage';
 import ApplicationDetailPage  from './features/admin/pages/ApplicationDetailPage';
 
@@ -30,10 +34,36 @@ const App = () => {
           <Route path="/register/cliente"   element={<ClientRegisterPage />} />
           {/* Registro de Proveedor B2B (formulario multi-step) */}
           <Route path="/registro-proveedor" element={<RegistrationPage />} />
+          {/* Corrección de solicitud con token (link desde correo) */}
+          <Route path="/correccion/:token"  element={<CorrectionPage />} />
           {/* Consulta de estado sin login */}
           <Route path="/estado-solicitud"   element={<CheckStatusPage />} />
 
           {/* Rutas de negocio (cualquier usuario autenticado) */}
+          <Route
+            path="/change-password"
+            element={
+              <PrivateRoute>
+                <ChangePasswordPage />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/completar-perfil"
+            element={
+              <PrivateRoute roles={['CLIENT']}>
+                <CompleteProfilePage />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/perfil"
+            element={
+              <PrivateRoute roles={['CLIENT', 'SUPPLIER']}>
+                <UserProfilePage />
+              </PrivateRoute>
+            }
+          />
           <Route
             path="/products"
             element={

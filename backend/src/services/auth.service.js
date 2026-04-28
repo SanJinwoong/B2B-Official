@@ -1,5 +1,5 @@
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
+const jwt    = require('jsonwebtoken');
 const prisma = require('../config/prisma');
 
 const SALT_ROUNDS = 10;
@@ -17,21 +17,15 @@ const generateToken = (user) => {
 
 /**
  * Registra un nuevo usuario en la base de datos.
- * Lanza un error si el email ya está en uso.
+ * Correos repetidos permitidos (entorno de desarrollo/pruebas).
  */
-const register = async ({ name, email, password, role }) => {
-  const existingUser = await prisma.user.findUnique({ where: { email } });
-  if (existingUser) {
-    const error = new Error('El correo electrónico ya está en uso.');
-    error.statusCode = 409;
-    throw error;
-  }
-
+const register = async ({ name, email, password, role, phone }) => {
   const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
 
   const user = await prisma.user.create({
-    data: { name, email, password: hashedPassword, role },
-    select: { id: true, name: true, email: true, role: true, createdAt: true },
+    data: { name, email, password: hashedPassword, role, phone: phone || null },
+    select: { id: true, name: true, email: true, role: true, phone: true,
+              profileCompleted: true, createdAt: true },
   });
 
   const token = generateToken(user);
@@ -40,10 +34,21 @@ const register = async ({ name, email, password, role }) => {
 
 /**
  * Valida credenciales y retorna el usuario con su token.
- * Lanza un error si las credenciales son incorrectas.
+ * Incluye mustChangePassword para que el frontend pueda redirigir al cambio.
  */
 const login = async ({ email, password }) => {
-  const user = await prisma.user.findUnique({ where: { email } });
+  // findFirst porque el email ya no es único — toma la cuenta más reciente con ese correo
+  const user = await prisma.user.findFirst({
+    where:   { email },
+    orderBy: { id: 'desc' },
+    select: {
+      id: true, name: true, email: true,
+      role: true, password: true, isActive: true,
+      mustChangePassword: true,
+      phone: true, profileCompleted: true,
+    },
+  });
+
   if (!user) {
     const error = new Error('Credenciales inválidas.');
     error.statusCode = 401;
@@ -62,4 +67,44 @@ const login = async ({ email, password }) => {
   return { user: userWithoutPassword, token };
 };
 
-module.exports = { register, login };
+/**
+ * Cambia la contraseña del usuario autenticado.
+ * Requiere verificar la contraseña actual antes de actualizar.
+ *
+ * @param {number} userId           - ID del usuario autenticado
+ * @param {string} currentPassword  - Contraseña actual (texto plano)
+ * @param {string} newPassword      - Nueva contraseña (texto plano)
+ */
+const changePassword = async (userId, currentPassword, newPassword) => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, password: true },
+  });
+
+  if (!user) {
+    const error = new Error('Usuario no encontrado.');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const isValid = await bcrypt.compare(currentPassword, user.password);
+  if (!isValid) {
+    const error = new Error('La contraseña actual es incorrecta.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const hashedNew = await bcrypt.hash(newPassword, SALT_ROUNDS);
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      password:          hashedNew,
+      mustChangePassword: false,  // Se desactiva la obligación tras el cambio
+    },
+  });
+
+  return { message: 'Contraseña actualizada correctamente.' };
+};
+
+module.exports = { register, login, changePassword };

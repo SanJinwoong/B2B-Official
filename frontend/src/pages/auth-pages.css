@@ -105,24 +105,57 @@
 }
 .ap-input.error { border-color: var(--error); }
 
-/* Input con botón de ojo */
-.ap-input-wrap { position: relative; }
-.ap-input-wrap .ap-input { padding-right: 2.6rem; width: 100%; }
-.ap-eye-btn {
+/* Input con icon izquierdo y/o botón de ojo derecho */
+.ap-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.ap-input-wrap .ap-input {
+  width: 100%;
+}
+
+/* Ícono izquierdo — queda dentro del input */
+.ap-input-icon {
   position: absolute;
-  right: 0.6rem;
+  left: 0.7rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-subtle);
+  pointer-events: none;
+  flex-shrink: 0;
+  display: block;          /* evita que hereden inline-flex del reset global */
+}
+/* Input que tiene icono: agrega padding-left para no tapar el texto */
+.ap-input.has-icon {
+  padding-left: 2.2rem;
+}
+
+/* Botón ojo (show/hide password) — derecha del input */
+.ap-eye-btn,
+.ap-reveal-btn {
+  position: absolute;
+  right: 0.55rem;
   top: 50%;
   transform: translateY(-50%);
   background: none;
   border: none;
   color: var(--text-subtle);
   cursor: pointer;
-  padding: 0.25rem;
-  display: flex;
-  align-items: center;
+  padding: 0.2rem;
+  display: flex !important;     /* sobreescribe el reset global */
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0 !important;
+  line-height: 1;
   transition: color var(--trans);
 }
-.ap-eye-btn:hover { color: var(--accent); }
+.ap-eye-btn:hover,
+.ap-reveal-btn:hover { color: var(--accent); }
+/* Input con botón ojo: espacio para no quedar tapado */
+.ap-input-wrap .ap-input { padding-right: 2.4rem; }
+/* Input con icono Y botón ojo */
+.ap-input-wrap .ap-input.has-icon { padding-left: 2.2rem; padding-right: 2.4rem; }
 
 /* Error de campo */
 .ap-field-error { font-size: 0.77rem; color: var(--error); }

@@ -18,7 +18,48 @@ import { adminApi }                        from '../../../api/api';
 import StatusBadge                         from '../components/StatusBadge';
 import DocumentViewer                      from '../components/DocumentViewer';
 import ReviewModal                         from '../components/ReviewModal';
+import {
+  Unlock, Lock, Clock, CheckCircle, XCircle, AlertTriangle,
+} from 'lucide-react';
 import '../admin-applications.css';
+
+// ── Miniatura inline autenticada (solo para imágenes) ────────────────────────
+const InlineImageThumb = ({ downloadUrl, token, alt }) => {
+  const [src, setSrc] = useState(null);
+
+  useEffect(() => {
+    if (!downloadUrl) return;
+    let objectUrl;
+    const base = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+    const path = downloadUrl.replace(/^\/api/, '');
+    fetch(`${base}${path}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.blob())
+      .then((b) => { objectUrl = URL.createObjectURL(b); setSrc(objectUrl); })
+      .catch(() => {});
+    return () => { if (objectUrl) URL.revokeObjectURL(objectUrl); };
+  }, [downloadUrl, token]);
+
+  if (!src) return (
+    <div style={{
+      width: '64px', height: '64px', borderRadius: '6px',
+      background: 'var(--aa-card-bg, #f1f5f9)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: '22px', flexShrink: 0,
+    }}>🖼</div>
+  );
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      style={{
+        width: '64px', height: '64px', borderRadius: '6px',
+        objectFit: 'cover', flexShrink: 0,
+        border: '1px solid var(--aa-border, #e2e8f0)',
+      }}
+    />
+  );
+};
 
 const fmt = (iso) => {
   if (!iso) return '—';
@@ -269,11 +310,17 @@ const ApplicationDetailPage = () => {
                       className="aa-doc-item"
                       style={{ cursor: 'pointer' }}
                       onClick={() => setViewingDoc(doc)}
-                      title="Haz clic para previsualizar"
+                      title="Haz clic para ver a pantalla completa"
                     >
-                      <span className="aa-doc-icon">
-                        {doc.mimeType?.startsWith('image/') ? '🖼' : '📑'}
-                      </span>
+                      {/* Thumbnail para imágenes, ícono para el resto */}
+                      {doc.mimeType?.startsWith('image/')
+                        ? <InlineImageThumb
+                            downloadUrl={doc.downloadUrl}
+                            token={token}
+                            alt={doc.originalName}
+                          />
+                        : <span className="aa-doc-icon">📑</span>
+                      }
                       <div className="aa-doc-info">
                         <p className="aa-doc-name">{doc.originalName}</p>
                         <p className="aa-doc-size">{doc.label}</p>
@@ -344,7 +391,7 @@ const ApplicationDetailPage = () => {
               {app.status === 'PENDING' && (
                 <>
                   <div className="aa-lock-info">
-                    <span>🔓</span>
+                    <Unlock size={15} style={{ flexShrink: 0 }} />
                     <span>Toma este caso para comenzar la revisión y bloquear la solicitud mientras la evalúas.</span>
                   </div>
                   <div className="aa-action-btns">
@@ -356,7 +403,7 @@ const ApplicationDetailPage = () => {
                     >
                       {actionLoading
                         ? <><span className="aa-spinner" /> Tomando caso...</>
-                        : '🔒 Tomar Caso para Revisión'}
+                        : <><Lock size={14} /> Tomar Caso para Revisión</>}
                     </button>
                   </div>
                 </>
@@ -365,7 +412,7 @@ const ApplicationDetailPage = () => {
               {/* ─── REVIEWING: lock ocupado por otro admin ─── */}
               {isLocked && (
                 <div className="aa-lock-info warning">
-                  <span>🔒</span>
+                  <Lock size={15} style={{ flexShrink: 0 }} />
                   <span>
                     Este caso está siendo revisado por <strong>{app.reviewer?.name}</strong> desde {fmt(app.reviewStartedAt)}.
                     No puedes modificarlo.
@@ -377,7 +424,7 @@ const ApplicationDetailPage = () => {
               {canAct && (
                 <>
                   <div className="aa-lock-info">
-                    <span>🔒</span>
+                    <Lock size={15} style={{ flexShrink: 0 }} />
                     <span>Tienes el lock de revisión desde {fmt(app.reviewStartedAt)}.</span>
                   </div>
                   <div className="aa-action-btns">
@@ -387,7 +434,7 @@ const ApplicationDetailPage = () => {
                       onClick={() => openModal('APPROVED')}
                       disabled={actionLoading}
                     >
-                      ✅ Aprobar Proveedor
+                      <CheckCircle size={15} /> Aprobar Proveedor
                     </button>
                     <button
                       className="aa-btn aa-btn-warn"
@@ -395,7 +442,7 @@ const ApplicationDetailPage = () => {
                       onClick={() => openModal('ACTION_REQUIRED')}
                       disabled={actionLoading}
                     >
-                      ⚠️ Solicitar Cambios
+                      <AlertTriangle size={15} /> Solicitar Cambios
                     </button>
                     <button
                       className="aa-btn aa-btn-danger"
@@ -403,7 +450,7 @@ const ApplicationDetailPage = () => {
                       onClick={() => openModal('REJECTED')}
                       disabled={actionLoading}
                     >
-                      ✕ Rechazar Solicitud
+                      <XCircle size={15} /> Rechazar Solicitud
                     </button>
                   </div>
                 </>
@@ -419,7 +466,7 @@ const ApplicationDetailPage = () => {
                     </div>
                   )}
                   <div className="aa-lock-info">
-                    <span>⏳</span>
+                    <Clock size={15} style={{ flexShrink: 0 }} />
                     <span>En espera de corrección por parte del prospecto. Cuando envíe su corrección, el estado regresará a PENDING.</span>
                   </div>
                 </>
@@ -428,7 +475,7 @@ const ApplicationDetailPage = () => {
               {/* ─── APPROVED: solo lectura ─── */}
               {app.status === 'APPROVED' && (
                 <div className="aa-lock-info" style={{ background: 'var(--success-bg)', borderColor: 'rgba(22,163,74,.2)' }}>
-                  <span>✅</span>
+                  <CheckCircle size={15} style={{ color: 'var(--success)', flexShrink: 0 }} />
                   <div>
                     <p style={{ color: 'var(--success)', fontWeight: 700, fontSize: '0.85rem' }}>Solicitud aprobada</p>
                     {app.approvedUser && (
@@ -450,7 +497,7 @@ const ApplicationDetailPage = () => {
                     </div>
                   )}
                   <div className="aa-lock-info warning">
-                    <span>✕</span>
+                    <XCircle size={15} style={{ flexShrink: 0 }} />
                     <span>Solicitud rechazada definitivamente. No puede ser revertida.</span>
                   </div>
                 </>

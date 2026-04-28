@@ -14,6 +14,13 @@ const registerSchema = z.object({
     .string({ required_error: 'La contraseña es obligatoria.' })
     .min(6, 'La contraseña debe tener al menos 6 caracteres.'),
 
+  phone: z
+    .string()
+    .trim()
+    .min(7, 'El teléfono debe tener al menos 7 dígitos.')
+    .max(20, 'El teléfono no puede superar 20 caracteres.')
+    .optional(),
+
   role: z
     .enum(['ADMIN', 'CLIENT', 'SUPPLIER'], {
       errorMap: () => ({ message: 'El rol debe ser ADMIN, CLIENT o SUPPLIER.' }),
@@ -25,6 +32,7 @@ const registerSchema = z.object({
 const loginSchema = z.object({
   email: z
     .string({ required_error: 'El correo es obligatorio.' })
+    .trim()
     .email('El correo no tiene un formato válido.'),
 
   password: z

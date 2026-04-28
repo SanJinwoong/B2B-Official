@@ -4,27 +4,29 @@
  * Protege el endpoint público POST /api/supplier-applications contra
  * envíos automatizados y fuerza bruta.
  *
- * Límite: 5 solicitudes por IP cada 15 minutos.
+ * Límite en producción : 5 solicitudes por IP cada 15 minutos.
+ * Límite en desarrollo : 30 solicitudes por IP cada 15 minutos
+ *                        (los envíos exitosos no cuentan → facilita pruebas).
  *
- * Nota académica:
- *   - El store por defecto es en memoria (MemoryStore).
- *   - En producción con múltiples instancias Node, usar RedisStore para
- *     compartir contadores entre procesos.
+ * Nota: El store por defecto es en memoria (MemoryStore).
+ * En producción con múltiples instancias Node, usar RedisStore.
  */
 const { rateLimit } = require('express-rate-limit');
 
+const isDev = process.env.NODE_ENV !== 'production';
+
 const applicationRateLimiter = rateLimit({
-  windowMs:       15 * 60 * 1000, // Ventana de 15 minutos
-  max:            5,               // Máximo de solicitudes por IP en la ventana
-  standardHeaders: true,           // Incluye RateLimit-* headers (RFC 6585)
-  legacyHeaders:   false,          // Desactiva X-RateLimit-* (obsoletos)
-  skipSuccessfulRequests: false,   // Conta también las 201 — evita spam de éxito
+  windowMs:       15 * 60 * 1000,  // Ventana de 15 minutos
+  max:            isDev ? 30 : 5,  // 30 en dev, 5 en producción
+  standardHeaders: true,
+  legacyHeaders:   false,
+  // En desarrollo, los 201 exitosos no suman al contador → puedes probar sin bloquearte
+  skipSuccessfulRequests: isDev,
 
   message: {
     error: 'Demasiadas solicitudes desde esta IP. Intenta de nuevo en 15 minutos.',
   },
 
-  // Handler personalizado para loguear el bloqueo en la terminal
   handler: (req, res, _next, options) => {
     console.warn(
       `[RATE LIMIT] IP bloqueada: ${req.ip} — ` +

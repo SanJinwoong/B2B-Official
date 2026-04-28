@@ -185,15 +185,26 @@
 
 /* Lock info */
 .aa-lock-info {
-  display: flex; gap: 0.5rem; padding: 0.65rem 0.85rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.65rem 0.85rem;
   background: var(--info-bg);
   border: 1px solid rgba(2,132,199,.2);
   border-radius: var(--radius-sm);
-  font-size: 0.81rem; color: var(--text-muted); margin-bottom: 1rem;
+  font-size: 0.81rem;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+/* Los iconos SVG dentro del lock-info siempre al centro vertical */
+.aa-lock-info > svg {
+  flex-shrink: 0;
+  margin-top: 1px;
 }
 .aa-lock-info.warning {
   background: var(--warning-bg);
-  border-color: rgba(217,119,6,.2); color: var(--warning);
+  border-color: rgba(217,119,6,.2);
+  color: var(--warning);
 }
 
 .aa-action-btns { display: flex; flex-direction: column; gap: 0.5rem; }

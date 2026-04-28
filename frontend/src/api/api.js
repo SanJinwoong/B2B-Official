@@ -42,6 +42,22 @@ api.interceptors.response.use(
 export const authApi = {
   register: (data) => api.post('/auth/register', data),
   login: (data) => api.post('/auth/login', data),
+  changePassword: (data) => api.patch('/auth/change-password', data),
+};
+
+// ─── Perfil Empresarial del Cliente ──────────────────────────────────────────
+
+export const clientProfileApi = {
+  get:    ()     => api.get('/clients/profile'),
+  upsert: (data) => api.post('/clients/profile', data),
+};
+
+// ─── Perfil personal del usuario ─────────────────────────────────────────────
+
+export const meApi = {
+  get:             ()     => api.get('/me'),
+  update:          (data) => api.patch('/me', data),
+  changePassword:  (data) => api.patch('/me/password', data),
 };
 
 // ─── Funciones de Productos ───────────────────────────────────────────────────
@@ -104,6 +120,12 @@ export const supplierApplicationApi = {
    * Sin autenticación — el cuid actúa como identificador opaco.
    */
   getStatus: (id) => api.get(`/supplier-applications/status/${id}`),
+
+  /**
+   * Obtiene los datos de la solicitud por token para pre-rellenar el formulario de corrección.
+   * @param {string} token - actionToken de la URL
+   */
+  getByToken: (token) => api.get(`/supplier-applications/action/${token}`),
 
   /**
    * Envía correcciones usando el token del correo.

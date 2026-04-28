@@ -34,10 +34,22 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   }, []);
 
+  /**
+   * Actualiza datos del usuario en el contexto y localStorage
+   * (por ejemplo, tras cambiar contraseña: mustChangePassword → false).
+   */
+  const updateUser = useCallback((partial) => {
+    setUser((prev) => {
+      const next = { ...prev, ...partial };
+      localStorage.setItem('user', JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
   const isAuthenticated = Boolean(token);
 
   return (
-    <AuthContext.Provider value={{ token, user, isAuthenticated, login, logout }}>
+    <AuthContext.Provider value={{ token, user, isAuthenticated, login, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

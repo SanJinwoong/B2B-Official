@@ -209,23 +209,8 @@ const updateActionSchema = z
     hasExportExp:    step2Shape.hasExportExp,
     description:     step2Shape.description,
     certifications:  step2Shape.certifications,
-  })
-  .refine(
-    (data) => {
-      const textFields = [
-        'companyName', 'rfc', 'website', 'category',
-        'contactName', 'contactEmail', 'contactPhone',
-        'country', 'state', 'city', 'address',
-        'monthlyCapacity', 'capacityUnit', 'leadTimeDays', 'description',
-      ];
-      const hasText  = textFields.some((k) => data[k] !== undefined);
-      const hasCerts = Array.isArray(data.certifications) && data.certifications.length > 0;
-      return hasText || hasCerts;
-    },
-    {
-      message:
-        'Debes enviar al menos un campo de texto o nuevas certificaciones para actualizar la solicitud.',
-    }
-  );
+    // IDs de documentos que el proveedor quiere eliminar
+    removeDocIds:    coercedStringArray,
+  });
 
 module.exports = { createApplicationSchema, reviewApplicationSchema, updateActionSchema };

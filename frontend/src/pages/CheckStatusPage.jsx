@@ -50,8 +50,8 @@ const STATUS_MAP = {
   APPROVED: {
     icon:      <CheckCircle size={28} strokeWidth={1.5} />,
     iconClass: 'cs-status-icon-approved',
-    title:     '¡Solicitud Aprobada!',
-    desc:      'Felicitaciones. Tu empresa ha sido verificada y aprobada como proveedor B2B.',
+    title:     '¡Solicitud Aprobada! ✅',
+    desc:      'Tu empresa fue verificada. Revisa tu correo para obtener tus credenciales de acceso e inicia sesión como proveedor.',
     showNote:  false,
   },
   REJECTED: {
@@ -249,16 +249,30 @@ const CheckStatusPage = () => {
           {/* CTA según estado */}
           <div className="cs-result-footer">
             {result.status === 'APPROVED' && (
-              <Link to="/login" className="cs-cta-btn cs-cta-success">
-                Ir al inicio de sesión
-                <ArrowRight size={15} />
-              </Link>
+              <>
+                <div style={{
+                  background: '#f0fdf4', border: '1px solid #bbf7d0',
+                  borderRadius: '10px', padding: '16px 20px', marginBottom: '16px',
+                  fontSize: '14px', color: '#166534',
+                }}>
+                  📧 Revisa tu correo <strong>{result.contactEmail}</strong> para encontrar tus credenciales de acceso.
+                </div>
+                <Link to="/login" className="cs-cta-btn cs-cta-success">
+                  Iniciar sesión como proveedor
+                  <ArrowRight size={15} />
+                </Link>
+              </>
             )}
             {result.status === 'ACTION_REQUIRED' && result.actionToken && (
               <Link to={`/correccion/${result.actionToken}`} className="cs-cta-btn cs-cta-warn">
                 Corregir mi solicitud
                 <ChevronRight size={15} />
               </Link>
+            )}
+            {result.status === 'ACTION_REQUIRED' && !result.actionToken && (
+              <p className="cs-cta-info" style={{ color: '#d97706' }}>
+                El link de corrección llegará a tu correo. También puedes consultar desde el estado de solicitud cuando esté disponible.
+              </p>
             )}
             {['PENDING', 'REVIEWING'].includes(result.status) && (
               <p className="cs-cta-info">

@@ -6,30 +6,24 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
-enum Role {
-  ADMIN
-  CLIENT
-  SUPPLIER
-}
 
-enum OrderStatus {
-  PENDING
-  APPROVED
-  SHIPPED
-  DELIVERED
-}
 
 model User {
   id        Int      @id @default(autoincrement())
-  email     String   @unique
+  email     String   // Sin @unique — se permiten correos repetidos (entorno de pruebas)
   password  String
   name      String
-  role      Role     @default(CLIENT)
+  role      String   @default("CLIENT")
   isActive  Boolean  @default(true)
+  mustChangePassword Boolean @default(false) // true para proveedores en su primer login
+
+  // Campos Fase 1 del registro de cliente
+  phone            String?  // Teléfono / WhatsApp
+  profileCompleted Boolean @default(false) // true cuando el cliente completa la Fase 2
 
   // Relations — core
   products  Product[] @relation("SupplierProducts")
@@ -39,6 +33,30 @@ model User {
   reviewedApplications SupplierApplication[]      // Solicitudes que revisó como admin
   approvedApplication  SupplierApplication? @relation("ApprovedSupplier")
 
+  // Relations — client profile
+  clientProfile ClientProfile?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  PERFIL EMPRESARIAL DEL CLIENTE (Fase 2)
+// ═══════════════════════════════════════════════════════════════════════════
+
+model ClientProfile {
+  id     Int  @id @default(autoincrement())
+  userId Int  @unique
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Datos empresariales
+  companyName        String           // Razón social
+  taxId              String           // RFC / EIN / NIF
+  businessType       String           // E-commerce | Retail físico | Mayorista | Fabricante | Importador | Otro
+  commercialAddress  String           // Domicilio fiscal / comercial
+  shippingAddress    String?          // Bodega / dirección de entrega (null = igual que comercial)
+  website            String?          // Opcional
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -47,13 +65,6 @@ model User {
 //  REGISTRO DE PROVEEDORES — Modelos nuevos
 // ═══════════════════════════════════════════════════════════════════════════
 
-enum ApplicationStatus {
-  PENDING          // Solicitud recibida — en cola para revisión
-  REVIEWING        // Admin tomó el caso — lock optimista activo
-  ACTION_REQUIRED  // El admin detectó un problema — prospecto debe corregir
-  REJECTED         // Rechazo definitivo — no reversible
-  APPROVED         // Aprobado — se crea la cuenta User SUPPLIER
-}
 
 model SupplierApplication {
   id  String @id @default(cuid())
@@ -78,11 +89,11 @@ model SupplierApplication {
   capacityUnit    String        // "piezas", "kg", "toneladas"
   leadTimeDays    Int
   hasExportExp    Boolean       @default(false)
-  description     String?       @db.Text
-  certifications  String[]      // ["ISO 9001:2015", "HACCP", ...]
+  description     String?
+  certifications  String        @default("[]") // ["ISO 9001:2015", "HACCP", ...]
 
   // ── Máquina de estados ────────────────────────────────────────────────
-  status ApplicationStatus @default(PENDING)
+  status String @default("PENDING")
 
   // ── Flujo de corrección parcial ───────────────────────────────────────
   actionNote           String?           // Motivo documentado por el admin
@@ -155,7 +166,7 @@ model Product {
 
 model Order {
   id             Int         @id @default(autoincrement())
-  status         OrderStatus @default(PENDING)
+  status         String      @default("PENDING")
   totalAmount    Float       @default(0) // = clientAmount (compatibilidad)
   clientAmount   Float       @default(0) // Lo que paga el cliente
   supplierAmount Float       @default(0) // Costo real del proveedor

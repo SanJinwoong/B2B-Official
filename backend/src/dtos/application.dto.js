@@ -65,15 +65,30 @@ const formatForPublic = (application) => ({
     ? application.actionNote
     : null,
 
-  // Datos de la solicitud (solo lectura para el prospecto)
-  category:        application.category,
-  city:            application.city,
-  state:           application.state,
-  country:         application.country,
+  // Token de corrección — solo expuesto cuando el prospecto lo necesita
+  // para construir la URL de edición desde CheckStatusPage.
+  actionToken: application.status === 'ACTION_REQUIRED'
+    ? application.actionToken ?? null
+    : null,
+
+  // ── Todos los campos del formulario (necesarios para pre-rellenar la corrección) ──
+  rfc:          application.rfc,
+  website:      application.website ?? null,
+  category:     application.category,
+
+  contactName:  application.contactName,
+  contactPhone: application.contactPhone,
+  country:      application.country,
+  state:        application.state,
+  city:         application.city,
+  address:      application.address ?? null,
+
   monthlyCapacity: application.monthlyCapacity,
   capacityUnit:    application.capacityUnit,
   leadTimeDays:    application.leadTimeDays,
-  certifications:  application.certifications ?? [],
+  hasExportExp:    application.hasExportExp,
+  description:     application.description ?? null,
+  certifications:  (() => { try { return JSON.parse(application.certifications || '[]'); } catch { return []; } })(),
 
   // Documentos: solo metadatos, sin URL de descarga
   documents: Array.isArray(application.documents)
@@ -83,12 +98,12 @@ const formatForPublic = (application) => ({
   createdAt: application.createdAt,
   updatedAt: application.updatedAt,
 
-  // ❌ filePath       — NUNCA
-  // ❌ actionToken    — NUNCA
+  // ❌ filePath        — NUNCA
   // ❌ submittedFromIp — NUNCA
-  // ❌ captchaScore   — NUNCA (dato interno)
-  // ❌ reviewerId     — NUNCA (dato administrativo)
+  // ❌ captchaScore    — NUNCA (dato interno)
+  // ❌ reviewerId      — NUNCA (dato administrativo)
 });
+
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // formatForAdmin — Vista completa para el administrador
@@ -126,7 +141,7 @@ const formatForAdmin = (application) => ({
   leadTimeDays:    application.leadTimeDays,
   hasExportExp:    application.hasExportExp,
   description:     application.description ?? null,
-  certifications:  application.certifications ?? [],
+  certifications:  (() => { try { return JSON.parse(application.certifications || '[]'); } catch { return []; } })(),
 
   // Máquina de estados
   actionNote:   application.actionNote ?? null,

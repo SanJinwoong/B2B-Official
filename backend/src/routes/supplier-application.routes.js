@@ -47,4 +47,9 @@ router.patch(
   controller.applyActionCorrection
 );
 
+// ── GET /api/supplier-applications/action/:token ─────────────────────────────
+// Pre-rellena el formulario de corrección con los datos actuales de la solicitud.
+// Sin autenticación — el token actúa como credencial temporal (72 h).
+router.get('/action/:token', controller.getApplicationByToken);
+
 module.exports = router;

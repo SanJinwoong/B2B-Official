@@ -23,6 +23,14 @@ router.use('/admin', adminRoutes);
 router.use('/supplier-applications', supplierApplicationRoutes);
 router.use('/admin/applications',    adminApplicationRoutes);
 
+// ── Perfil Empresarial del Cliente (Fase 2) ───────────────────────────────────
+const clientProfileRoutes = require('./client-profile.routes');
+router.use('/clients/profile', clientProfileRoutes);
+
+// ── Perfil personal de cualquier usuario ─────────────────────────────────────
+const userProfileRoutes = require('./user-profile.routes');
+router.use('/me', userProfileRoutes);
+
 
 
 // ── Ruta de prueba de autenticación ──────────────────────────────────────────

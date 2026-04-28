@@ -96,7 +96,7 @@ const createApplication = async (data, files, ip, captchaScore) => {
       leadTimeDays:    data.leadTimeDays,
       hasExportExp:    data.hasExportExp ?? false,
       description:     data.description ?? null,
-      certifications:  data.certifications ?? [],
+      certifications:  JSON.stringify(data.certifications ?? []),
       captchaScore,
       submittedFromIp: ip,
       // Documentos: uno por archivo subido
@@ -191,10 +191,24 @@ const applyActionCorrection = async (token, data, files) => {
     'hasExportExp', 'description', 'certifications',
   ];
   textFields.forEach((field) => {
-    if (data[field] !== undefined) updateData[field] = data[field];
+    if (data[field] !== undefined) {
+      updateData[field] = field === 'certifications'
+        ? JSON.stringify(data[field])
+        : data[field];
+    }
   });
 
-  // Preparar nuevos documentos si los hay
+  // IDs de docs a eliminar (validados: deben pertenecer a esta solicitud)
+  const removeDocIds = (data.removeDocIds || []).filter((id) =>
+    app.documents.some((doc) => doc.id === id)
+  );
+
+  // Rutas en disco de los docs a eliminar (para borrarlos tras la transacción)
+  const pathsToDelete = app.documents
+    .filter((doc) => removeDocIds.includes(doc.id))
+    .map((doc) => doc.filePath);
+
+  // Nuevos documentos adjuntados en esta corrección
   const newDocs = (files || []).map((file) => ({
     applicationId: app.id,
     label:        file.fieldname,
@@ -204,9 +218,23 @@ const applyActionCorrection = async (token, data, files) => {
     sizeBytes:    file.size,
   }));
 
-  // Ejecutar en transacción: actualizar campos + insertar docs + resetear estado y token
+  // Guardar email del revisor antes de limpiar el lock (para notificarlo)
+  const reviewerEmail = app.reviewerId
+    ? await prisma.user
+        .findUnique({ where: { id: app.reviewerId }, select: { email: true } })
+        .then((u) => u?.email ?? null)
+    : null;
+
+  // ── Transacción: eliminar docs, insertar nuevos, resetear estado ──────────
   const updated = await prisma.$transaction(async (tx) => {
-    // Insertar nuevos documentos si los hay
+    // Eliminar documentos marcados por el proveedor
+    if (removeDocIds.length > 0) {
+      await tx.applicationDocument.deleteMany({
+        where: { id: { in: removeDocIds } },
+      });
+    }
+
+    // Insertar nuevos documentos
     if (newDocs.length > 0) {
       await tx.applicationDocument.createMany({ data: newDocs });
     }
@@ -215,11 +243,10 @@ const applyActionCorrection = async (token, data, files) => {
       where: { id: app.id },
       data: {
         ...updateData,
-        status:              'PENDING',    // Vuelve a la cola
-        actionToken:          null,         // Token destruido — un solo uso
+        status:              'PENDING',
+        actionToken:          null,
         actionTokenExpiresAt: null,
-        actionNote:           null,         // Limpiar el motivo previo
-        // Limpiar el lock anterior para que cualquier admin pueda tomarlo
+        actionNote:           null,
         reviewerId:           null,
         reviewStartedAt:      null,
         reviewedAt:           null,
@@ -228,7 +255,60 @@ const applyActionCorrection = async (token, data, files) => {
     });
   });
 
+  // Borrar archivos físicos de los docs eliminados (fuera de la transacción)
+  if (pathsToDelete.length > 0) {
+    const fs = require('fs');
+    await Promise.allSettled(
+      pathsToDelete.map((p) =>
+        fs.promises.unlink(p).catch((e) =>
+          console.error(`[GC] No se pudo borrar archivo: ${p}`, e.message)
+        )
+      )
+    );
+  }
+
+  // Notificar al admin revisor por email
+  if (reviewerEmail) {
+    mailer.sendCorrectionSubmitted(reviewerEmail, app.id, app.companyName);
+  }
+
   return updated;
+};
+
+
+/**
+ * Obtiene los datos actuales de una solicitud usando el actionToken.
+ * Permite al prospecto pre-rellenar el formulario de corrección.
+ * Solo funciona si el token es válido y no ha expirado.
+ *
+ * @param {string} token - actionToken recibido por correo / URL
+ * @returns {Promise<object>} Datos de la solicitud (sin datos sensibles)
+ */
+const getApplicationByToken = async (token) => {
+  const app = await prisma.supplierApplication.findUnique({
+    where: { actionToken: token },
+    include: { documents: true },
+  });
+
+  if (!app) {
+    throw bizError('El enlace de corrección no es válido o ya fue utilizado.', 400);
+  }
+
+  if (app.actionTokenExpiresAt < new Date()) {
+    throw bizError(
+      'El enlace de corrección ha expirado (TTL: 72 h). Contacta al administrador.',
+      410
+    );
+  }
+
+  if (app.status !== 'ACTION_REQUIRED') {
+    throw bizError(
+      `Esta solicitud ya no requiere corrección (estado actual: ${app.status}).`,
+      409
+    );
+  }
+
+  return app;
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -376,11 +456,12 @@ const approveApplication = async (id, adminId) => {
   const [newUser, updatedApp] = await prisma.$transaction([
     prisma.user.create({
       data: {
-        email:    app.contactEmail,
-        name:     app.contactName,
-        password: hashedPassword,
-        role:     'SUPPLIER',
-        isActive: true,
+        email:             app.contactEmail,
+        name:              app.contactName,
+        password:          hashedPassword,
+        role:              'SUPPLIER',
+        isActive:          true,
+        mustChangePassword: true,   // Fuerza cambio de contraseña en primer login
       },
     }),
     prisma.supplierApplication.update({
@@ -512,6 +593,7 @@ module.exports = {
   createApplication,
   getApplicationStatus,
   applyActionCorrection,
+  getApplicationByToken,
   // Admin
   listApplications,
   getApplicationById,

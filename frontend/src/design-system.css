@@ -871,3 +871,59 @@ body {
 }
 .nb-login-btn:hover { background: var(--accent-hover); }
 
+/* ── Badge Verificado (SUPPLIER) ── */
+.nb-verified-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px 3px 7px;
+  border-radius: 99px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: var(--success-bg);
+  color: var(--success);
+  border: 1px solid currentColor;
+  white-space: nowrap;
+}
+
+/* ── Perfil clickable (CLIENT / SUPPLIER) ── */
+.nb-profile-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 3px 10px 3px 4px;
+  border-radius: 99px;
+  border: 1px solid var(--border-2);
+  background: transparent;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all var(--trans);
+}
+.nb-profile-btn:hover {
+  background: var(--surface-2);
+  border-color: var(--accent-border);
+}
+
+/* ── Alineación de iconos en botones (solo clases explícitas) ──
+   Aplica flex solo a clases de botón conocidas, nunca a <button> genérico
+   para no romper inputs con ícono ni wrappers de formularios.           */
+.aa-btn, .rs-btn-primary, .rs-btn-ghost,
+.ap-btn-primary, .ap-btn,
+.btn, .btn-primary, .btn-outline, .btn-danger, .btn-success, .btn-sm,
+.nb-login-btn, .nb-profile-btn {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+/* Botones de solo-icono: sin gap */
+.nb-icon-btn,
+.dv-icon-btn,
+.ap-eye-btn,
+.ap-reveal-btn,
+.ap-theme-btn {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+}

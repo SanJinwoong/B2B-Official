@@ -40,8 +40,13 @@ const LoginPage = () => {
     try {
       const { data } = await authApi.login(form);
       login(data.token, data.user);
-      const dest = ROLE_REDIRECT[data.user?.role] || '/products';
-      navigate(dest, { replace: true });
+      // Si es primer login de proveedor → forzar cambio de contraseña
+      if (data.user?.mustChangePassword) {
+        navigate('/change-password', { replace: true });
+      } else {
+        const dest = ROLE_REDIRECT[data.user?.role] || '/products';
+        navigate(dest, { replace: true });
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Correo o contraseña incorrectos.');
     } finally {

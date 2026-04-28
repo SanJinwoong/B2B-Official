@@ -34,4 +34,29 @@ const login = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login };
+/**
+ * PATCH /api/auth/change-password
+ * Requiere autenticación. Cuerpo: { currentPassword, newPassword, confirmPassword }
+ */
+const changePassword = async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      return res.status(400).json({ error: { message: 'Todos los campos son obligatorios.' } });
+    }
+    if (newPassword.length < 8) {
+      return res.status(400).json({ error: { message: 'La nueva contraseña debe tener al menos 8 caracteres.' } });
+    }
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ error: { message: 'La nueva contraseña y la confirmación no coinciden.' } });
+    }
+
+    const result = await authService.changePassword(req.user.id, currentPassword, newPassword);
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { register, login, changePassword };

@@ -1,6 +1,7 @@
-const { Router } = require('express');
+const { Router }     = require('express');
 const authController = require('../controllers/auth.controller');
-const validate = require('../middlewares/validate');
+const validate       = require('../middlewares/validate');
+const authenticate   = require('../middlewares/authenticate');
 const { registerSchema, loginSchema } = require('../schemas/auth.schema');
 
 const router = Router();
@@ -11,5 +12,7 @@ router.post('/register', validate(registerSchema), authController.register);
 // POST /api/auth/login
 router.post('/login', validate(loginSchema), authController.login);
 
-module.exports = router;
+// PATCH /api/auth/change-password  — Requiere autenticación
+router.patch('/change-password', authenticate, authController.changePassword);
 
+module.exports = router;
