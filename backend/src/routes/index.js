@@ -6,6 +6,12 @@ const orderRoutes               = require('./order.routes');
 const adminRoutes               = require('./admin.routes');
 const supplierApplicationRoutes = require('./supplier-application.routes');
 const adminApplicationRoutes    = require('./admin-applications.routes');
+const rfqRoutes                 = require('./rfq.routes');
+const messageRoutes             = require('./message.routes');
+const paymentRoutes             = require('./payment.routes');
+const clientProfileRoutes       = require('./client-profile.routes');
+const userProfileRoutes         = require('./user-profile.routes');
+const dashboardRoutes           = require('./dashboard.routes');
 
 const router = Router();
 
@@ -14,26 +20,24 @@ router.use('/auth', authRoutes);
 
 // ── Rutas de negocio ──────────────────────────────────────────────────────────
 router.use('/products', productRoutes);
-router.use('/orders', orderRoutes);
+router.use('/orders',   orderRoutes);
 
-// ── Rutas de administración (existentes) ──────────────────────────────────────
+// ── Dashboard Cliente ─────────────────────────────────────────────────────────
+router.use('/dashboard', dashboardRoutes);
+router.use('/rfqs',      rfqRoutes);
+router.use('/messages',  messageRoutes);
+router.use('/payments',  paymentRoutes);
+
+// ── Rutas de administración ───────────────────────────────────────────────────
 router.use('/admin', adminRoutes);
-
-// ── Registro de Proveedores B2B (nuevas) ──────────────────────────────────────
 router.use('/supplier-applications', supplierApplicationRoutes);
 router.use('/admin/applications',    adminApplicationRoutes);
 
-// ── Perfil Empresarial del Cliente (Fase 2) ───────────────────────────────────
-const clientProfileRoutes = require('./client-profile.routes');
+// ── Perfil ────────────────────────────────────────────────────────────────────
 router.use('/clients/profile', clientProfileRoutes);
-
-// ── Perfil personal de cualquier usuario ─────────────────────────────────────
-const userProfileRoutes = require('./user-profile.routes');
 router.use('/me', userProfileRoutes);
 
-
-
-// ── Ruta de prueba de autenticación ──────────────────────────────────────────
+// ── Ruta de prueba ────────────────────────────────────────────────────────────
 router.get('/test', authenticate, (req, res) => {
   res.json({ message: 'Acceso permitido', user: req.user });
 });

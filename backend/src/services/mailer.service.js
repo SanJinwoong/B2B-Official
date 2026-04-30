@@ -13,13 +13,22 @@
 
 const { Resend } = require('resend');
 
-const resend      = new Resend(process.env.RESEND_API_KEY);
-const FROM        = process.env.RESEND_FROM  || 'onboarding@resend.dev';
-const FRONTEND    = process.env.FRONTEND_URL || 'http://localhost:5173';
+const FROM     = process.env.RESEND_FROM  || 'onboarding@resend.dev';
+const FRONTEND = process.env.FRONTEND_URL || 'http://localhost:5173';
 
 // ── Helper: envío seguro (nunca lanza excepción al caller) ─────────────────────
+// El cliente se crea de forma lazy para que un RESEND_API_KEY ausente
+// solo genere un warning en consola, no un crash al arrancar el servidor.
 const safeSend = async (payload) => {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.warn('[Mailer] ⚠️  RESEND_API_KEY no configurada — correo simulado (mock):');
+    console.warn('[Mailer]    Para:', payload.to);
+    console.warn('[Mailer]    Asunto:', payload.subject);
+    return;
+  }
   try {
+    const resend = new Resend(apiKey);
     const { data, error } = await resend.emails.send(payload);
     if (error) {
       console.error('[Mailer] Resend error:', error);

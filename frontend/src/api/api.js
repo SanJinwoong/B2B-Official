@@ -106,36 +106,55 @@ export const adminApi = {
 // ─── Funciones de Registro de Proveedores (públicas) ─────────────────────────
 
 export const supplierApplicationApi = {
-  /**
-   * Envía el formulario completo como multipart/form-data.
-   * @param {FormData} formData - FormData construido con todos los campos + archivos
-   */
   create: (formData) =>
     api.post('/supplier-applications', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
-
-  /**
-   * Consulta el estado de una solicitud por su ID.
-   * Sin autenticación — el cuid actúa como identificador opaco.
-   */
   getStatus: (id) => api.get(`/supplier-applications/status/${id}`),
-
-  /**
-   * Obtiene los datos de la solicitud por token para pre-rellenar el formulario de corrección.
-   * @param {string} token - actionToken de la URL
-   */
   getByToken: (token) => api.get(`/supplier-applications/action/${token}`),
-
-  /**
-   * Envía correcciones usando el token del correo.
-   * @param {string}   token    - actionToken de la URL
-   * @param {FormData} formData - Campos corregidos + nuevos archivos opcionales
-   */
   applyCorrection: (token, formData) =>
     api.patch(`/supplier-applications/action/${token}`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
 };
 
+// ─── Dashboard Cliente — RFQs ─────────────────────────────────────────────────
+
+export const rfqApi = {
+  create:       (data)            => api.post('/rfqs', data),
+  getMyRFQs:    ()               => api.get('/rfqs/my'),
+  getById:      (id)             => api.get(`/rfqs/my/${id}`),
+  approveQuote: (rfqId, quoteId) => api.post(`/rfqs/my/${rfqId}/approve`, { quoteId }),
+};
+
+// ─── Dashboard Cliente — Mensajes ─────────────────────────────────────────────
+
+export const messageApi = {
+  getMessages:  () =>           api.get('/messages'),
+  send:         (content) =>    api.post('/messages', { content }),
+  getUnread:    () =>           api.get('/messages/unread'),
+};
+
+// ─── Dashboard Cliente — Pagos ────────────────────────────────────────────────
+
+export const paymentApi = {
+  getMyPayments: () =>          api.get('/payments'),
+  getSummary:    () =>          api.get('/payments/summary'),
+  pay:           (id) =>        api.patch(`/payments/${id}/pay`),
+};
+
+// ─── Dashboard Cliente — Órdenes (extiende ordersApi) ────────────────────────
+
+export const clientOrdersApi = {
+  getMy:    ()   => api.get('/orders/my'),
+  getById:  (id) => api.get(`/orders/${id}`),
+};
+
+// ─── Dashboard Cliente — Resumen general ─────────────────────────────────────
+
+export const dashboardApi = {
+  getSummary: () => api.get('/dashboard'),
+};
+
 export default api;
+

@@ -89,14 +89,25 @@ const extractErrors = (axiosError) => {
   }
   if (status === 409) {
     return {
-      global: body?.error?.message || 'Ya existe una solicitud activa con este email.',
+      global: body?.error?.message || 'Ya existe una solicitud activa con este email o RFC. Revisa tu correo de confirmación.',
       fields: {},
     };
   }
-  if (status === 400 && body?.errors) {
+  if (status === 400 && body?.errors?.length > 0) {
     const fields = {};
     body.errors.forEach(({ field, message }) => { fields[field] = message; });
-    return { global: body.message || 'Corrige los campos marcados en rojo.', fields };
+    // Construir mensaje legible con los campos que fallaron
+    const fieldNames = body.errors.map(({ field }) => field).join(', ');
+    return {
+      global: `Revisa los campos: ${fieldNames}. Regresa al paso correspondiente y corrígelos.`,
+      fields,
+    };
+  }
+  if (status === 400) {
+    return {
+      global: body?.message || body?.error?.message || 'Error de validación en el formulario.',
+      fields: {},
+    };
   }
   return {
     global: body?.error?.message || 'Error de conexión. Verifica tu internet e intenta de nuevo.',

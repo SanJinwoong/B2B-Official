@@ -137,21 +137,31 @@ const step1Shape = {
 
 // ── Paso 2: Capacidad ─────────────────────────────────────────────────────────
 const step2Shape = {
-  monthlyCapacity: z.coerce
-    .number({ invalid_type_error: 'La capacidad mensual debe ser un número.' })
-    .int('La capacidad mensual debe ser un número entero.')
-    .positive('La capacidad mensual debe ser mayor a 0.'),
+  monthlyCapacity: z
+    .union([z.string(), z.number()])
+    .transform((val) => {
+      if (val === '' || val === null || val === undefined) return 0;
+      const n = Number(val);
+      return isNaN(n) ? 0 : n;
+    })
+    .refine((n) => Number.isInteger(n), { message: 'La capacidad mensual debe ser un número entero.' })
+    .refine((n) => n > 0,               { message: 'La capacidad mensual debe ser mayor a 0.' }),
 
   capacityUnit: z
     .string({ required_error: 'La unidad de capacidad es obligatoria.' })
     .trim()
     .min(1, 'Especifica la unidad (ej. piezas, kg, toneladas).'),
 
-  leadTimeDays: z.coerce
-    .number({ invalid_type_error: 'El lead time debe ser un número.' })
-    .int('El lead time debe ser un número entero de días.')
-    .min(1, 'El lead time debe ser al menos 1 día.')
-    .max(365, 'El lead time no puede superar 365 días.'),
+  leadTimeDays: z
+    .union([z.string(), z.number()])
+    .transform((val) => {
+      if (val === '' || val === null || val === undefined) return 0;
+      const n = Number(val);
+      return isNaN(n) ? 0 : n;
+    })
+    .refine((n) => Number.isInteger(n), { message: 'El lead time debe ser un número entero de días.' })
+    .refine((n) => n >= 1,              { message: 'El lead time debe ser al menos 1 día.' })
+    .refine((n) => n <= 365,            { message: 'El lead time no puede superar 365 días.' }),
 
   hasExportExp: coercedBoolean.optional().default(false),
 

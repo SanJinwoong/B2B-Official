@@ -59,11 +59,17 @@ const itemForAdmin = (item) => ({
  */
 const orderForClient = (order) => ({
   id:           order.id,
+  orderNumber:  order.orderNumber,
   status:       order.status,
+  sampleStatus: order.sampleStatus,
+  deliveryDate: order.deliveryDate,
   clientAmount: order.clientAmount ?? order.totalAmount, // fallback para órdenes viejas
   createdAt:    order.createdAt,
   updatedAt:    order.updatedAt,
   orderItems:   order.orderItems?.map(itemForClient) ?? [],
+  phases:       order.phases ?? [],
+  documents:    order.documents ?? [],
+  payments:     order.payments ?? [],
   // ❌ NO clientId (redundante para el cliente)
   // ❌ NO supplierAmount
   // ❌ NO margin
@@ -95,7 +101,10 @@ const orderForSupplier = (order, userId) => {
  */
 const orderForAdmin = (order) => ({
   id:             order.id,
+  orderNumber:    order.orderNumber,
   status:         order.status,
+  sampleStatus:   order.sampleStatus,
+  deliveryDate:   order.deliveryDate,
   clientAmount:   order.clientAmount ?? order.totalAmount,
   supplierAmount: order.supplierAmount,
   margin:         round2((order.clientAmount ?? order.totalAmount) - order.supplierAmount),
@@ -104,6 +113,9 @@ const orderForAdmin = (order) => ({
   createdAt:      order.createdAt,
   updatedAt:      order.updatedAt,
   orderItems:     order.orderItems?.map(itemForAdmin) ?? [],
+  phases:         order.phases ?? [],
+  documents:      order.documents ?? [],
+  payments:       order.payments ?? [],
 });
 
 // ── Función principal de transformación ──────────────────────────────────────

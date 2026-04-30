@@ -17,6 +17,16 @@ import RegistrationPage       from './features/supplier-registration/pages/Regis
 import CorrectionPage         from './features/supplier-registration/pages/CorrectionPage';
 import ApplicationsListPage   from './features/admin/pages/ApplicationsListPage';
 import ApplicationDetailPage  from './features/admin/pages/ApplicationDetailPage';
+// Client Dashboard
+import ClientLayout           from './features/client-dashboard/layout/ClientLayout';
+import ClientDashboardPage    from './features/client-dashboard/pages/ClientDashboardPage';
+import ClientRFQsPage         from './features/client-dashboard/pages/ClientRFQsPage';
+import ClientOrdersPage       from './features/client-dashboard/pages/ClientOrdersPage';
+import ClientOrderDetailPage  from './features/client-dashboard/pages/ClientOrderDetailPage';
+import ClientMessagesPage     from './features/client-dashboard/pages/ClientMessagesPage';
+import ClientPaymentsPage     from './features/client-dashboard/pages/ClientPaymentsPage';
+import ClientEmpresaPage      from './features/client-dashboard/pages/ClientEmpresaPage';
+import ErrorBoundary          from './components/ErrorBoundary';
 
 const App = () => {
   return (
@@ -107,8 +117,28 @@ const App = () => {
             }
           />
 
-          {/* /admin sin subruta → redirige a usuarios */}
-          <Route path="/admin" element={<Navigate to="/admin/users" replace />} />
+          {/* /admin sin subruta → redirige a aplicaciones */}
+          <Route path="/admin" element={<Navigate to="/admin/applications" replace />} />
+
+          {/* Dashboard Cliente (layout propio, sin Navbar) */}
+          <Route
+            path="/client"
+            element={
+              <ErrorBoundary>
+                <PrivateRoute roles={['CLIENT']}>
+                  <ClientLayout />
+                </PrivateRoute>
+              </ErrorBoundary>
+            }
+          >
+            <Route index          element={<ClientDashboardPage />} />
+            <Route path="rfqs"    element={<ClientRFQsPage />} />
+            <Route path="orders"  element={<ClientOrdersPage />} />
+            <Route path="orders/:id" element={<ClientOrderDetailPage />} />
+            <Route path="messages" element={<ClientMessagesPage />} />
+            <Route path="payments" element={<ClientPaymentsPage />} />
+            <Route path="empresa"  element={<ClientEmpresaPage />} />
+          </Route>
 
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/products" replace />} />

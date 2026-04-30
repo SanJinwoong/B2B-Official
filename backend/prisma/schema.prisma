@@ -36,6 +36,11 @@ model User {
   // Relations — client profile
   clientProfile ClientProfile?
 
+  // Relations — dashboard cliente
+  rfqs              RFQ[]     @relation("ClientRFQs")
+  clientMessages    Message[] @relation("ClientMessages")
+  sentMessages      Message[] @relation("SentMessages")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -166,15 +171,27 @@ model Product {
 
 model Order {
   id             Int         @id @default(autoincrement())
+  orderNumber    String?     @unique  // "ORD-2026-031"
+  // PENDING | IN_PRODUCTION | QUALITY_CONTROL | IN_TRANSIT | DELIVERED
   status         String      @default("PENDING")
-  totalAmount    Float       @default(0) // = clientAmount (compatibilidad)
-  clientAmount   Float       @default(0) // Lo que paga el cliente
-  supplierAmount Float       @default(0) // Costo real del proveedor
+  totalAmount    Float       @default(0)
+  clientAmount   Float       @default(0)
+  supplierAmount Float       @default(0)
+
+  deliveryDate   DateTime?
+  // null | PENDING | APPROVED | REJECTED
+  sampleStatus   String?     @default("PENDING")
 
   // Relations
   clientId    Int
-  client      User        @relation("ClientOrders", fields: [clientId], references: [id])
+  client      User          @relation("ClientOrders", fields: [clientId], references: [id])
   orderItems  OrderItem[]
+
+  // Dashboard cliente
+  phases      OrderPhase[]  @relation("OrderPhases")
+  documents   OrderDocument[] @relation("OrderDocuments")
+  payments    Payment[]     @relation("OrderPayments")
+  rfq         RFQ?          @relation("RFQOrder")
 
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
@@ -195,3 +212,115 @@ model OrderItem {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  DASHBOARD CLIENTE — Modelos nuevos
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── Solicitud de cotización (RFQ) ─────────────────────────────────────────
+model RFQ {
+  id          Int      @id @default(autoincrement())
+  rfqNumber   String   @unique  // "RFQ-2026-041"
+  clientId    Int
+  client      User     @relation("ClientRFQs", fields: [clientId], references: [id])
+
+  title       String            // Nombre del producto buscado
+  description String?           // Especificaciones detalladas
+  quantity    Int
+  unit        String   @default("piezas")
+
+  // PENDING | SEARCHING | QUOTED | APPROVED | EXPIRED
+  status      String   @default("PENDING")
+
+  quotes      RFQQuote[]
+
+  // Si se convirtió en pedido
+  orderId     Int?     @unique
+  order       Order?   @relation("RFQOrder", fields: [orderId], references: [id])
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ── Cotización presentada por el admin para un RFQ ────────────────────────
+model RFQQuote {
+  id              Int       @id @default(autoincrement())
+  rfqId           Int
+  rfq             RFQ       @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+
+  label           String            // "Opción A", "Opción B"
+  supplierName    String
+  supplierCountry String   @default("")
+
+  unitPrice       Float
+  totalPrice      Float
+  deliveryDays    Int
+  moq             Int               // Minimum Order Quantity
+  notes           String?
+  validUntil      DateTime?
+
+  isApproved      Boolean  @default(false)
+  createdAt       DateTime @default(now())
+}
+
+// ── Fases de producción de un pedido (stepper) ────────────────────────────
+model OrderPhase {
+  id          Int      @id @default(autoincrement())
+  orderId     Int
+  order       Order    @relation("OrderPhases", fields: [orderId], references: [id], onDelete: Cascade)
+
+  // INITIAL_PAYMENT | PRODUCTION | QUALITY_CONTROL | SHIPPING | DELIVERED
+  phase       String
+  phaseNumber Int               // 1-5
+  // PENDING | IN_PROGRESS | DONE
+  status      String   @default("PENDING")
+  notes       String?
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+}
+
+// ── Documentos adjuntos al pedido ─────────────────────────────────────────
+model OrderDocument {
+  id           Int      @id @default(autoincrement())
+  orderId      Int
+  order        Order    @relation("OrderDocuments", fields: [orderId], references: [id], onDelete: Cascade)
+
+  // PROFORMA | PACKING_LIST | QUALITY_CERT | BILL_OF_LADING | OTHER
+  type         String
+  label        String
+  fileUrl      String
+  createdAt    DateTime @default(now())
+}
+
+// ── Mensajes cliente <-> gestor (admin) ───────────────────────────────────
+model Message {
+  id        Int      @id @default(autoincrement())
+  clientId  Int
+  client    User     @relation("ClientMessages", fields: [clientId], references: [id])
+  senderId  Int
+  sender    User     @relation("SentMessages", fields: [senderId], references: [id])
+
+  content   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+// ── Pagos y facturas de un pedido ─────────────────────────────────────────
+model Payment {
+  id            Int      @id @default(autoincrement())
+  invoiceNumber String            // "FAC-2026-031-A"
+  orderId       Int
+  order         Order    @relation("OrderPayments", fields: [orderId], references: [id])
+
+  // DEPOSIT | BALANCE | FULL
+  type          String
+  percentage    Float    @default(50)
+  amount        Float
+
+  // PENDING | PAID | OVERDUE
+  status        String   @default("PENDING")
+  dueDate       DateTime?
+  paidAt        DateTime?
+  createdAt     DateTime @default(now())
+}
+

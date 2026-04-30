@@ -120,9 +120,12 @@ const getMyOrders = async (clientId) => {
     include: {
       orderItems: {
         include: {
-          product: { select: { id: true, name: true, price: true, supplierPrice: true, supplierId: true } },
+          product: { select: { id: true, name: true, price: true } },
         },
       },
+      phases:    { orderBy: { phaseNumber: 'asc' } },
+      documents: { orderBy: { createdAt: 'asc' } },
+      payments:  { orderBy: { createdAt: 'asc' } },
     },
     orderBy: { createdAt: 'desc' },
   });
@@ -157,9 +160,12 @@ const getOrderById = async (id) => {
       client: { select: { id: true, name: true, email: true } },
       orderItems: {
         include: {
-          product: { select: { id: true, name: true, price: true, supplierPrice: true, supplierId: true } },
+          product: { select: { id: true, name: true, price: true } },
         },
       },
+      phases:    { orderBy: { phaseNumber: 'asc' } },
+      documents: { orderBy: { createdAt: 'asc' } },
+      payments:  { orderBy: { createdAt: 'asc' } },
     },
   });
 
