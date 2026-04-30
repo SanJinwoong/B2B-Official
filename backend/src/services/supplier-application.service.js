@@ -60,6 +60,8 @@ const assertAdminHasLock = (application, adminId) => {
  */
 const createApplication = async (data, files, ip, captchaScore) => {
   // Verificar email duplicado en solicitudes activas (no rechazadas)
+  // [COMENTADO PARA PRUEBAS LOCALES - PERMITE CORREOS DUPLICADOS]
+  /*
   const existing = await prisma.supplierApplication.findFirst({
     where: {
       contactEmail: data.contactEmail,
@@ -74,6 +76,7 @@ const createApplication = async (data, files, ip, captchaScore) => {
       409
     );
   }
+  */
 
   // Normalizar website vacío → null
   const website = data.website?.trim() || null;
