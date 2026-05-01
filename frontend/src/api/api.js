@@ -171,5 +171,39 @@ export const dashboardApi = {
   getSummary: () => api.get('/dashboard'),
 };
 
+// ─── Marketplace B2B ──────────────────────────────────────────────────────────
+
+export const marketplaceApi = {
+  // Catálogo público
+  getCategories:  ()           => api.get('/marketplace/categories'),
+  search:         (params)     => api.get('/marketplace/products', { params }),
+  getProduct:     (id)         => api.get(`/marketplace/products/${id}`),
+
+  // Ratings (CLIENT)
+  submitRating:   (id, data)   => api.post(`/marketplace/products/${id}/ratings`, data),
+
+  // Carrito (CLIENT)
+  getCart:        ()           => api.get('/marketplace/cart'),
+  addToCart:      (productId, quantity) => api.post('/marketplace/cart', { productId, quantity }),
+  updateCartItem: (itemId, quantity)    => api.patch(`/marketplace/cart/${itemId}`, { quantity }),
+  removeCartItem: (itemId)     => api.delete(`/marketplace/cart/${itemId}`),
+  clearCart:      ()           => api.delete('/marketplace/cart'),
+  checkout:       (data)       => api.post('/marketplace/cart/checkout', data),
+
+  // Wishlist (CLIENT)
+  getWishlist:    ()           => api.get('/marketplace/wishlist'),
+  toggleWishlist: (productId)  => api.post(`/marketplace/wishlist/${productId}`),
+};
+
+// ─── Supplier Catalog API ─────────────────────────────────────────────────────
+
+export const supplierCatalogApi = {
+  getCatalog:     (params)     => api.get('/supplier/catalog', { params }),
+  create:         (data)       => api.post('/supplier/catalog', data),
+  update:         (id, data)   => api.patch(`/supplier/catalog/${id}`, data),
+  remove:         (id)         => api.delete(`/supplier/catalog/${id}`),
+  getProfile:     ()           => api.get('/supplier/profile'),
+};
+
 export default api;
 

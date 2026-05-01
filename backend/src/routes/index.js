@@ -14,6 +14,8 @@ const userProfileRoutes         = require('./user-profile.routes');
 const dashboardRoutes           = require('./dashboard.routes');
 const scouterRoutes             = require('./scouter.routes');
 const supplierPortalRoutes      = require('./supplier-portal.routes');
+const marketplaceRoutes         = require('./marketplace.routes');
+
 
 const router = Router();
 
@@ -44,6 +46,10 @@ router.use('/scouters', scouterRoutes);
 
 // ── Portal Proveedor (post-aprobación) ────────────────────────────────────────
 router.use('/supplier', supplierPortalRoutes);
+
+// ── Marketplace B2B (catálogo, carrito, wishlist, checkout) ──────────────────
+router.use('/marketplace', marketplaceRoutes);
+
 
 // ── Ruta de prueba ────────────────────────────────────────────────────────────
 router.get('/test', authenticate, (req, res) => {

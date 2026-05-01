@@ -27,10 +27,13 @@ import ClientOrderDetailPage  from './features/client-dashboard/pages/ClientOrde
 import ClientMessagesPage     from './features/client-dashboard/pages/ClientMessagesPage';
 import ClientPaymentsPage     from './features/client-dashboard/pages/ClientPaymentsPage';
 import ClientEmpresaPage      from './features/client-dashboard/pages/ClientEmpresaPage';
+import MarketplacePage        from './features/client-dashboard/pages/MarketplacePage';
+import ProductDetailPage      from './features/client-dashboard/pages/ProductDetailPage';
 import ErrorBoundary          from './components/ErrorBoundary';
 // Supplier Portal
 import SupplierLayout         from './features/supplier-portal/SupplierLayout';
 import SupplierDashboardPage  from './features/supplier-portal/pages/SupplierDashboardPage';
+import SupplierCatalogPage    from './features/supplier-portal/pages/SupplierCatalogPage';
 
 const App = () => {
   return (
@@ -144,7 +147,10 @@ const App = () => {
               </ErrorBoundary>
             }
           >
-            <Route index          element={<ClientDashboardPage />} />
+            <Route index          element={<Navigate to="marketplace" replace />} />
+            <Route path="dashboard" element={<ClientDashboardPage />} />
+            <Route path="marketplace" element={<MarketplacePage />} />
+            <Route path="marketplace/:id" element={<ProductDetailPage />} />
             <Route path="rfqs"    element={<ClientRFQsPage />} />
             <Route path="orders"  element={<ClientOrdersPage />} />
             <Route path="orders/:id" element={<ClientOrderDetailPage />} />
@@ -168,7 +174,7 @@ const App = () => {
             <Route path="dashboard"  element={<SupplierDashboardPage />} />
             <Route path="rfqs"       element={<SupplierDashboardPage />} />
             <Route path="pedidos"    element={<SupplierDashboardPage />} />
-            <Route path="catalogo"   element={<SupplierDashboardPage />} />
+            <Route path="catalogo"   element={<SupplierCatalogPage />} />
             <Route path="mensajes"   element={<SupplierDashboardPage />} />
             <Route path="rendimiento" element={<SupplierDashboardPage />} />
           </Route>

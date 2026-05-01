@@ -164,17 +164,115 @@ model Product {
   id             Int      @id @default(autoincrement())
   name           String
   description    String?
-  price          Float             // Precio cliente (con margen)
+  price          Float             // Precio cliente unitario base
   supplierPrice  Float  @default(0) // Costo real del proveedor
   stock          Int      @default(0)
 
+  // ── Marketplace fields ────────────────────────────────────────────────────
+  category      String   @default("general")   // empaques|manufactura|alimentos|textiles|logistica|quimicos|otros
+  subcategory   String?
+  brand         String?
+  sku           String?
+
+  // Tipo de venta (CLAVE del marketplace)
+  saleType      String   @default("WHOLESALE")  // WHOLESALE | RETAIL | BOTH
+  moq           Int      @default(1)             // Minimum Order Quantity
+  leadTimeDays  Int      @default(7)             // Días de producción/entrega
+  unit          String   @default("piezas")      // piezas | kg | metros | litros | rollos | cajas
+
+  // Precios escalonados por volumen (JSON serializado)
+  // Ej: [{"minQty":100,"price":1.50},{"minQty":500,"price":1.20}]
+  tierPricing   String   @default("[]")
+
+  // Estado de publicación en el marketplace
+  // ACTIVE | DRAFT | INACTIVE
+  status        String   @default("ACTIVE")
+
+  // Especificaciones técnicas (JSON serializado)
+  // Ej: {"material":"Polietileno","grosor":"50 micras","color":"Transparente"}
+  specs         String   @default("{}")
+
+  // Tags para búsqueda (JSON serializado)
+  // Ej: ["biodegradable","kraft","certificado-fsc"]
+  tags          String   @default("[]")
+
+  // Métricas del marketplace
+  viewCount     Int      @default(0)
+  salesCount    Int      @default(0)
+  avgRating     Float    @default(0)
+  ratingCount   Int      @default(0)
+
   // Relations
   supplierId  Int
-  supplier    User     @relation("SupplierProducts", fields: [supplierId], references: [id])
+  supplier    User            @relation("SupplierProducts", fields: [supplierId], references: [id])
   orderItems  OrderItem[]
+  images      ProductImage[]
+  ratings     ProductRating[]
+  wishlistItems WishlistItem[]
+  cartItems   CartItem[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+// ── Imágenes del producto (hasta 8 por producto) ─────────────────────────────
+model ProductImage {
+  id        Int      @id @default(autoincrement())
+  productId Int
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  // Base64 o URL externa
+  url       String
+  altText   String?
+  isPrimary Boolean  @default(false)
+  sortOrder Int      @default(0)
+
+  createdAt DateTime @default(now())
+}
+
+// ── Reseñas de clientes sobre productos ──────────────────────────────────────
+model ProductRating {
+  id        Int      @id @default(autoincrement())
+  productId Int
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  clientId  Int
+
+  stars     Int      // 1–5
+  comment   String?
+  verified  Boolean  @default(false) // true si el cliente tiene orden entregada del producto
+
+  createdAt DateTime @default(now())
+
+  @@unique([productId, clientId]) // Un cliente, una reseña por producto
+}
+
+// ── Carrito de compras del cliente ───────────────────────────────────────────
+model CartItem {
+  id        Int      @id @default(autoincrement())
+  clientId  Int
+  productId Int
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  quantity  Int      @default(1)
+  // Precio unitario al momento de añadir (puede cambiar si el supplier edita)
+  priceSnapshot Float @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([clientId, productId]) // Un ítem por producto en el carrito
+}
+
+// ── Wishlist / Guardados del cliente ─────────────────────────────────────────
+model WishlistItem {
+  id        Int      @id @default(autoincrement())
+  clientId  Int
+  productId Int
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([clientId, productId])
 }
 
 model Order {

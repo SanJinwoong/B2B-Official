@@ -177,24 +177,63 @@ const updateOrderStatus = async (supplierId, orderId, { status, notes }) => {
 const getCatalog = async (supplierId, { search, status } = {}) => {
   const where = { supplierId };
   if (search) where.name = { contains: search, mode: 'insensitive' };
-  if (status && status !== 'ALL') where.isActive = status === 'ACTIVE';
+  if (status && status !== 'ALL') where.status = status;
 
-  return prisma.product.findMany({
+  const products = await prisma.product.findMany({
     where,
+    include: {
+      images: { orderBy: { sortOrder: 'asc' } },
+      _count:  { select: { ratings: true, orderItems: true } },
+    },
     orderBy: { createdAt: 'desc' },
   });
+
+  const parseJSON = (str, fallback) => { try { return JSON.parse(str); } catch { return fallback; } };
+
+  return products.map((p) => ({
+    ...p,
+    tierPricing: parseJSON(p.tierPricing, []),
+    specs:       parseJSON(p.specs, {}),
+    tags:        parseJSON(p.tags, []),
+    reviewCount: p._count.ratings,
+    salesCount:  p._count.orderItems,
+  }));
 };
 
 const createProduct = async (supplierId, data) => {
+  const {
+    name, description, price, supplierPrice, stock,
+    category = 'general', subcategory, brand, sku,
+    saleType = 'WHOLESALE', moq = 1, leadTimeDays = 7, unit = 'piezas',
+    tierPricing = [], specs = {}, tags = [],
+    status = 'ACTIVE',
+    images = [],
+  } = data;
+
   return prisma.product.create({
     data: {
-      name:          data.name,
-      description:   data.description || null,
-      price:         parseFloat(data.price),
-      supplierPrice: parseFloat(data.supplierPrice || 0),
-      stock:         parseInt(data.stock || 0),
+      name, description: description || null,
+      price:         parseFloat(price),
+      supplierPrice: parseFloat(supplierPrice || 0),
+      stock:         parseInt(stock || 0),
+      category, subcategory: subcategory || null,
+      brand: brand || null, sku: sku || null,
+      saleType, moq: parseInt(moq), leadTimeDays: parseInt(leadTimeDays), unit,
+      tierPricing: JSON.stringify(tierPricing),
+      specs:       JSON.stringify(specs),
+      tags:        JSON.stringify(tags),
+      status,
       supplierId,
+      images: images.length > 0 ? {
+        create: images.map((img, i) => ({
+          url:       img.url,
+          altText:   img.altText || null,
+          isPrimary: i === 0,
+          sortOrder: i,
+        })),
+      } : undefined,
     },
+    include: { images: true },
   });
 };
 
@@ -204,16 +243,55 @@ const updateProduct = async (supplierId, productId, data) => {
   });
   if (!product) throw Object.assign(new Error('Producto no encontrado.'), { statusCode: 404 });
 
+  const parseJSON = (str, fallback) => { try { return JSON.parse(str); } catch { return fallback; } };
+
+  const updateData = {};
+  if (data.name        != null) updateData.name        = data.name;
+  if (data.description != null) updateData.description = data.description;
+  if (data.price       != null) updateData.price        = parseFloat(data.price);
+  if (data.supplierPrice != null) updateData.supplierPrice = parseFloat(data.supplierPrice);
+  if (data.stock       != null) updateData.stock        = parseInt(data.stock);
+  if (data.category    != null) updateData.category     = data.category;
+  if (data.subcategory != null) updateData.subcategory  = data.subcategory;
+  if (data.brand       != null) updateData.brand        = data.brand;
+  if (data.sku         != null) updateData.sku          = data.sku;
+  if (data.saleType    != null) updateData.saleType     = data.saleType;
+  if (data.moq         != null) updateData.moq          = parseInt(data.moq);
+  if (data.leadTimeDays!= null) updateData.leadTimeDays = parseInt(data.leadTimeDays);
+  if (data.unit        != null) updateData.unit         = data.unit;
+  if (data.status      != null) updateData.status       = data.status;
+  if (data.tierPricing != null) updateData.tierPricing  = JSON.stringify(data.tierPricing);
+  if (data.specs       != null) updateData.specs        = JSON.stringify(data.specs);
+  if (data.tags        != null) updateData.tags         = JSON.stringify(data.tags);
+
+  // Si mandan imágenes nuevas, reemplazar todas
+  if (data.images && Array.isArray(data.images)) {
+    await prisma.productImage.deleteMany({ where: { productId: Number(productId) } });
+    updateData.images = {
+      create: data.images.map((img, i) => ({
+        url:       img.url,
+        altText:   img.altText || null,
+        isPrimary: i === 0,
+        sortOrder: i,
+      })),
+    };
+  }
+
   return prisma.product.update({
-    where: { id: Number(productId) },
-    data: {
-      name:        data.name        ?? product.name,
-      description: data.description ?? product.description,
-      price:       data.price       != null ? parseFloat(data.price)        : product.price,
-      stock:       data.stock       != null ? parseInt(data.stock)          : product.stock,
-      isActive:    data.isActive    != null ? Boolean(data.isActive)        : product.isActive,
-    },
+    where:   { id: Number(productId) },
+    data:    updateData,
+    include: { images: true },
   });
 };
 
-module.exports = { getDashboard, getMyOrders, updateOrderStatus, getCatalog, createProduct, updateProduct };
+const deleteProduct = async (supplierId, productId) => {
+  const product = await prisma.product.findFirst({
+    where: { id: Number(productId), supplierId },
+  });
+  if (!product) throw Object.assign(new Error('Producto no encontrado.'), { statusCode: 404 });
+
+  return prisma.product.delete({ where: { id: Number(productId) } });
+};
+
+module.exports = { getDashboard, getMyOrders, updateOrderStatus, getCatalog, createProduct, updateProduct, deleteProduct };
+

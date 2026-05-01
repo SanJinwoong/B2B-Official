@@ -37,3 +37,29 @@ exports.updateProduct = wrap(async (req, res) => {
   const product = await svc.updateProduct(req.user.id, req.params.id, req.body);
   res.json({ ok: true, data: product });
 });
+
+exports.deleteProduct = wrap(async (req, res) => {
+  await svc.deleteProduct(req.user.id, req.params.id);
+  res.json({ ok: true });
+});
+
+exports.getProfile = wrap(async (req, res) => {
+  // El proveedor puede ver su propio perfil público
+  const prisma = require('../config/prisma');
+  const supplier = await prisma.user.findUnique({
+    where: { id: req.user.id },
+    select: {
+      id: true, name: true,
+      approvedApplication: {
+        select: {
+          companyName: true, category: true, country: true,
+          state: true, city: true, description: true,
+          certifications: true, monthlyCapacity: true,
+          capacityUnit: true, leadTimeDays: true,
+        },
+      },
+    },
+  });
+  res.json({ ok: true, data: supplier });
+});
+

@@ -12,8 +12,15 @@ const supplier = [auth, authorize('SUPPLIER')];
 router.get   ('/dashboard',            ...supplier, ctrl.dashboard);
 router.get   ('/orders',               ...supplier, ctrl.getOrders);
 router.patch ('/orders/:id/status',    ...supplier, ctrl.updateOrderStatus);
+
+// Catálogo
 router.get   ('/catalog',              ...supplier, ctrl.getCatalog);
 router.post  ('/catalog',              ...supplier, ctrl.createProduct);
 router.patch ('/catalog/:id',          ...supplier, ctrl.updateProduct);
+router.delete('/catalog/:id',          ...supplier, ctrl.deleteProduct);
+
+// Perfil público del proveedor (visible para clientes)
+router.get   ('/profile',              ...supplier, ctrl.getProfile);
 
 module.exports = router;
+
