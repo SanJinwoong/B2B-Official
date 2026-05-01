@@ -13,6 +13,7 @@ const clientProfileRoutes       = require('./client-profile.routes');
 const userProfileRoutes         = require('./user-profile.routes');
 const dashboardRoutes           = require('./dashboard.routes');
 const scouterRoutes             = require('./scouter.routes');
+const supplierPortalRoutes      = require('./supplier-portal.routes');
 
 const router = Router();
 
@@ -40,6 +41,9 @@ router.use('/me', userProfileRoutes);
 
 // ── Scouters / Sistema de referidos ──────────────────────────────────────────
 router.use('/scouters', scouterRoutes);
+
+// ── Portal Proveedor (post-aprobación) ────────────────────────────────────────
+router.use('/supplier', supplierPortalRoutes);
 
 // ── Ruta de prueba ────────────────────────────────────────────────────────────
 router.get('/test', authenticate, (req, res) => {

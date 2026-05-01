@@ -28,6 +28,9 @@ import ClientMessagesPage     from './features/client-dashboard/pages/ClientMess
 import ClientPaymentsPage     from './features/client-dashboard/pages/ClientPaymentsPage';
 import ClientEmpresaPage      from './features/client-dashboard/pages/ClientEmpresaPage';
 import ErrorBoundary          from './components/ErrorBoundary';
+// Supplier Portal
+import SupplierLayout         from './features/supplier-portal/SupplierLayout';
+import SupplierDashboardPage  from './features/supplier-portal/pages/SupplierDashboardPage';
 
 const App = () => {
   return (
@@ -148,6 +151,26 @@ const App = () => {
             <Route path="messages" element={<ClientMessagesPage />} />
             <Route path="payments" element={<ClientPaymentsPage />} />
             <Route path="empresa"  element={<ClientEmpresaPage />} />
+          </Route>
+
+          {/* Portal Proveedor */}
+          <Route
+            path="/proveedor"
+            element={
+              <ErrorBoundary>
+                <PrivateRoute roles={['SUPPLIER']}>
+                  <SupplierLayout />
+                </PrivateRoute>
+              </ErrorBoundary>
+            }
+          >
+            <Route index             element={<Navigate to="/proveedor/dashboard" replace />} />
+            <Route path="dashboard"  element={<SupplierDashboardPage />} />
+            <Route path="rfqs"       element={<SupplierDashboardPage />} />
+            <Route path="pedidos"    element={<SupplierDashboardPage />} />
+            <Route path="catalogo"   element={<SupplierDashboardPage />} />
+            <Route path="mensajes"   element={<SupplierDashboardPage />} />
+            <Route path="rendimiento" element={<SupplierDashboardPage />} />
           </Route>
 
           {/* Fallback */}

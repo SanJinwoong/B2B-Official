@@ -17,7 +17,7 @@ import './auth-pages.css';
 
 const ROLE_REDIRECT = {
   ADMIN:    '/admin/applications',
-  SUPPLIER: '/products',
+  SUPPLIER: '/proveedor/dashboard',
   CLIENT:   '/client',
 };
 

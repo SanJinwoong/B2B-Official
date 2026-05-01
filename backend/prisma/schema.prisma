@@ -33,8 +33,9 @@ model User {
   scouter     Scouter? @relation(fields: [scouterId], references: [id])
 
   // Relations — core
-  products  Product[] @relation("SupplierProducts")
-  orders    Order[]   @relation("ClientOrders")
+  products       Product[]  @relation("SupplierProducts")
+  orders         Order[]    @relation("ClientOrders")
+  supplierOrders Order[]    @relation("SupplierOrders")
 
   // Relations — supplier registration
   reviewedApplications SupplierApplication[]      // Solicitudes que revisó como admin
@@ -192,6 +193,8 @@ model Order {
   // Relations
   clientId    Int
   client      User          @relation("ClientOrders", fields: [clientId], references: [id])
+  supplierId  Int?
+  supplier    User?         @relation("SupplierOrders", fields: [supplierId], references: [id])
   orderItems  OrderItem[]
 
   // Dashboard cliente
