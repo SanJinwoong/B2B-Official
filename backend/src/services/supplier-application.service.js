@@ -224,7 +224,7 @@ const applyActionCorrection = async (token, data, files) => {
   // Guardar email del revisor antes de limpiar el lock (para notificarlo)
   const reviewerEmail = app.reviewerId
     ? await prisma.user
-        .findUnique({ where: { id: app.reviewerId }, select: { email: true } })
+        .findFirst({ where: { id: app.reviewerId }, select: { email: true } })
         .then((u) => u?.email ?? null)
     : null;
 
@@ -440,7 +440,7 @@ const approveApplication = async (id, adminId) => {
   assertAdminHasLock(app, adminId);
 
   // Verificar que no exista ya un usuario con ese email
-  const existingUser = await prisma.user.findUnique({
+  const existingUser = await prisma.user.findFirst({
     where: { email: app.contactEmail },
   });
   if (existingUser) {
