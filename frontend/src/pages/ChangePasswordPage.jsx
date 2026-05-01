@@ -168,9 +168,9 @@ const ChangePasswordPage = () => {
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
           <div style={{
             width: '52px', height: '52px', borderRadius: '14px',
-            background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+            background: 'linear-gradient(135deg, #2563eb, #0ea5e9)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '0 auto 14px', boxShadow: '0 4px 16px #6366f140',
+            margin: '0 auto 14px', boxShadow: '0 4px 16px rgba(37,99,235,0.3)',
           }}>
             <ShieldCheck size={26} color="#fff" />
           </div>

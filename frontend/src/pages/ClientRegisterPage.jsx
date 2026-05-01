@@ -370,7 +370,7 @@ const ClientRegisterPage = () => {
                 description="Alguien me recomendó"
                 selected={referredBy === 'SCOUTER'}
                 onClick={() => handleReferralChange('SCOUTER')}
-                color="#8b5cf6"
+                color="#2563eb"
               />
             </div>
           </div>
@@ -380,8 +380,8 @@ const ClientRegisterPage = () => {
             <div style={{
               marginTop: '2px',
               padding: '16px',
-              background: '#8b5cf608',
-              border: '1px solid #8b5cf630',
+              background: 'var(--accent-light)',
+              border: '1px solid var(--accent-border)',
               borderRadius: '10px',
               display: 'flex',
               flexDirection: 'column',
@@ -440,7 +440,7 @@ const ClientRegisterPage = () => {
                   }}>
                     <div style={{
                       width: '38px', height: '38px', borderRadius: '50%',
-                      background: 'linear-gradient(135deg, #8b5cf6, #6366f1)',
+                      background: 'linear-gradient(135deg, #2563eb, #0ea5e9)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       fontSize: '15px', fontWeight: 700, color: '#fff', flexShrink: 0,
                     }}>

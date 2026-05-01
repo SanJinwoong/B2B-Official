@@ -11,7 +11,7 @@ import {
   Star, Plus, Pencil, Trash2, Check, X,
   Users, Trophy, RefreshCw, ToggleLeft, ToggleRight,
 } from 'lucide-react';
-import { adminScouterApi } from '../../api/api';
+import { adminScouterApi } from '../../../api/api';
 
 // ── Utilidades ──────────────────────────────────────────────────────────────
 const StarDisplay = ({ value, max = 5 }) => (
@@ -155,7 +155,7 @@ const ScoutersPage = () => {
             style={{
               display: 'flex', alignItems: 'center', gap: '6px',
               padding: '8px 16px', borderRadius: '8px',
-              border: 'none', background: '#8b5cf6',
+              border: 'none', background: 'var(--accent)',
               color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
             }}
           >
@@ -167,7 +167,7 @@ const ScoutersPage = () => {
       {/* ── Métricas rápidas ─────────────────────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '24px' }}>
         {[
-          { label: 'Scouters activos', value: scouters.filter((s) => s.isActive).length, color: '#8b5cf6' },
+          { label: 'Scouters activos', value: scouters.filter((s) => s.isActive).length, color: 'var(--accent)' },
           { label: 'Clientes referidos', value: totalClients, color: '#0ea5e9', icon: <Users size={16} color="#0ea5e9" /> },
           { label: 'Calificación promedio', value: avgOverall, color: '#f59e0b', suffix: '/ 5' },
         ].map((m) => (
@@ -220,7 +220,7 @@ const ScoutersPage = () => {
           marginBottom: '20px',
           padding: '20px',
           background: 'var(--bg-card)',
-          border: '2px solid #8b5cf6',
+          border: '2px solid var(--accent)',
           borderRadius: '12px',
         }}>
           <h3 style={{ margin: '0 0 16px', fontSize: '1rem', fontWeight: 700, color: 'var(--text)' }}>
@@ -268,7 +268,7 @@ const ScoutersPage = () => {
               </button>
               <button type="submit" disabled={saving} style={{
                 padding: '8px 18px', borderRadius: '7px',
-                border: 'none', background: '#8b5cf6',
+                border: 'none', background: 'var(--accent)',
                 color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
                 display: 'flex', alignItems: 'center', gap: '5px',
               }}>
@@ -347,7 +347,7 @@ const ScoutersPage = () => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <div style={{
                         width: '34px', height: '34px', borderRadius: '50%',
-                        background: 'linear-gradient(135deg, #8b5cf6, #6366f1)',
+                        background: 'linear-gradient(135deg, #2563eb, #0ea5e9)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         fontSize: '12px', fontWeight: 700, color: '#fff', flexShrink: 0,
                       }}>
@@ -430,7 +430,7 @@ const ScoutersPage = () => {
                           display: 'flex', alignItems: 'center',
                           transition: 'all 0.15s',
                         }}
-                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#8b5cf6'; e.currentTarget.style.color = '#8b5cf6'; }}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--accent)'; }}
                         onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-muted)'; }}
                       >
                         <Pencil size={13} />

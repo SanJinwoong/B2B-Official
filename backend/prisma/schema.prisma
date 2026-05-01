@@ -25,6 +25,7 @@ model User {
   // Campos Fase 1 del registro de cliente
   phone            String?  // Teléfono / WhatsApp
   profileCompleted Boolean @default(false) // true cuando el cliente completa la Fase 2
+  avatar           String?  // Foto de perfil (base64 o URL)
 
   // Referido — cómo llegó el cliente
   referredBy  String?  // NONE | PAGE | SCOUTER

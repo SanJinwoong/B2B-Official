@@ -68,7 +68,7 @@ const login = async ({ email, password }) => {
       id: true, name: true, email: true,
       role: true, password: true, isActive: true,
       mustChangePassword: true,
-      phone: true, profileCompleted: true,
+      phone: true, profileCompleted: true, avatar: true,
     },
   });
 

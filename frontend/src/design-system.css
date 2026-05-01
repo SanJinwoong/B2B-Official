@@ -70,42 +70,42 @@
   --font: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
-/* ── Tokens Dark ─────────────────────────────────────────────────────────── */
+/* ── Tokens Dark — NEUTRO (sin morado) ──────────────────────────────────── */
 html.dark {
-  --bg:          #0f172a;
-  --surface:     #1e293b;
-  --surface-2:   #263449;
-  --surface-3:   #334155;
+  --bg:          #111827;
+  --surface:     #1f2937;
+  --surface-2:   #283548;
+  --surface-3:   #374151;
 
-  --border:      #1e293b;
-  --border-2:    #334155;
+  --border:      #374151;
+  --border-2:    #4b5563;
 
-  --text:        #f1f5f9;
-  --text-muted:  #94a3b8;
-  --text-subtle: #64748b;
+  --text:        #f9fafb;
+  --text-muted:  #9ca3af;
+  --text-subtle: #6b7280;
 
   --accent:        #3b82f6;
   --accent-hover:  #2563eb;
-  --accent-light:  rgba(59,130,246,.1);
+  --accent-light:  rgba(59,130,246,.12);
   --accent-border: rgba(59,130,246,.3);
   --accent-glow:   rgba(59,130,246,.2);
 
-  --success-bg:    rgba(22,163,74,.1);
-  --warning-bg:    rgba(217,119,6,.1);
-  --error-bg:      rgba(220,38,38,.1);
-  --info-bg:       rgba(2,132,199,.1);
+  --success-bg:    rgba(22,163,74,.15);
+  --warning-bg:    rgba(217,119,6,.15);
+  --error-bg:      rgba(220,38,38,.15);
+  --info-bg:       rgba(2,132,199,.15);
 
-  --s-pending-bg:   rgba(217,119,6,.12);
-  --s-reviewing-bg: rgba(37,99,235,.15);
-  --s-action-bg:    rgba(234,88,12,.12);
-  --s-approved-bg:  rgba(22,163,74,.12);
-  --s-rejected-bg:  rgba(220,38,38,.12);
+  --s-pending-bg:   rgba(217,119,6,.15);
+  --s-reviewing-bg: rgba(59,130,246,.15);
+  --s-action-bg:    rgba(234,88,12,.15);
+  --s-approved-bg:  rgba(22,163,74,.15);
+  --s-rejected-bg:  rgba(220,38,38,.15);
 
-  --shadow-sm:   0 1px 2px rgba(0,0,0,.3);
-  --shadow:      0 1px 3px rgba(0,0,0,.4), 0 1px 2px rgba(0,0,0,.3);
-  --shadow-md:   0 4px 6px rgba(0,0,0,.4), 0 2px 4px rgba(0,0,0,.3);
-  --shadow-lg:   0 10px 15px rgba(0,0,0,.4), 0 4px 6px rgba(0,0,0,.3);
-  --shadow-xl:   0 20px 25px rgba(0,0,0,.5), 0 10px 10px rgba(0,0,0,.4);
+  --shadow-sm:   0 1px 2px rgba(0,0,0,.4);
+  --shadow:      0 1px 3px rgba(0,0,0,.5), 0 1px 2px rgba(0,0,0,.4);
+  --shadow-md:   0 4px 6px rgba(0,0,0,.5), 0 2px 4px rgba(0,0,0,.4);
+  --shadow-lg:   0 10px 15px rgba(0,0,0,.5), 0 4px 6px rgba(0,0,0,.4);
+  --shadow-xl:   0 20px 25px rgba(0,0,0,.6), 0 10px 10px rgba(0,0,0,.5);
 }
 
 /* ── Reset base ──────────────────────────────────────────────────────────── */
