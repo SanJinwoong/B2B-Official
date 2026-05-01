@@ -26,6 +26,11 @@ model User {
   phone            String?  // Teléfono / WhatsApp
   profileCompleted Boolean @default(false) // true cuando el cliente completa la Fase 2
 
+  // Referido — cómo llegó el cliente
+  referredBy  String?  // NONE | PAGE | SCOUTER
+  scouterId   Int?
+  scouter     Scouter? @relation(fields: [scouterId], references: [id])
+
   // Relations — core
   products  Product[] @relation("SupplierProducts")
   orders    Order[]   @relation("ClientOrders")
@@ -325,3 +330,41 @@ model Payment {
   createdAt     DateTime @default(now())
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+//  SCOUTERS — Sistema de referidos
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Scouter: persona que refiere clientes (creada/gestionada por el admin)
+model Scouter {
+  id          Int      @id @default(autoincrement())
+  name        String
+  email       String?
+  phone       String?
+  isActive    Boolean  @default(true)
+
+  // Rating calculado (promedio de ScouterRating.stars)
+  avgRating   Float    @default(0)
+  ratingCount Int      @default(0)
+
+  // Relaciones
+  ratings     ScouterRating[]
+  clients     User[]          // clientes referidos por este scouter
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// Un voto por cliente registrado — un cliente solo puede votar una vez
+model ScouterRating {
+  id        Int      @id @default(autoincrement())
+  scouterId Int
+  scouter   Scouter  @relation(fields: [scouterId], references: [id], onDelete: Cascade)
+
+  stars     Int      // 1-5
+  comment   String?
+
+  // FK al User que votó (referencia implícita via clientUserId)
+  clientUserId Int    @unique // un cliente, un voto
+
+  createdAt DateTime @default(now())
+}

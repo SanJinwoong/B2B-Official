@@ -17,6 +17,7 @@ import RegistrationPage       from './features/supplier-registration/pages/Regis
 import CorrectionPage         from './features/supplier-registration/pages/CorrectionPage';
 import ApplicationsListPage   from './features/admin/pages/ApplicationsListPage';
 import ApplicationDetailPage  from './features/admin/pages/ApplicationDetailPage';
+import ScoutersPage           from './features/admin/pages/ScoutersPage';
 // Client Dashboard
 import ClientLayout           from './features/client-dashboard/layout/ClientLayout';
 import ClientDashboardPage    from './features/client-dashboard/pages/ClientDashboardPage';
@@ -113,6 +114,15 @@ const App = () => {
             element={
               <PrivateRoute roles={['ADMIN']}>
                 <ApplicationDetailPage />
+              </PrivateRoute>
+            }
+          />
+
+          <Route
+            path="/admin/scouters"
+            element={
+              <PrivateRoute roles={['ADMIN']}>
+                <ScoutersPage />
               </PrivateRoute>
             }
           />

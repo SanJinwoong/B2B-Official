@@ -8,7 +8,7 @@
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import {
   Sun, Moon, LogOut, Building2, ShieldCheck,
-  Package, ClipboardList, User, BadgeCheck,
+  Package, ClipboardList, User, BadgeCheck, Trophy,
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth }  from '../context/AuthContext';
@@ -68,6 +68,10 @@ const Navbar = () => {
                 <NavLink to="/admin/applications" className={({ isActive }) => `nb-link ${isActive ? 'active' : ''}`}>
                   <ClipboardList size={14} strokeWidth={2} />
                   Proveedores
+                </NavLink>
+                <NavLink to="/admin/scouters" className={({ isActive }) => `nb-link ${isActive ? 'active' : ''}`}>
+                  <Trophy size={14} strokeWidth={2} />
+                  Scouters
                 </NavLink>
               </>
             )}

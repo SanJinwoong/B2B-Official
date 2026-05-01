@@ -45,6 +45,21 @@ export const authApi = {
   changePassword: (data) => api.patch('/auth/change-password', data),
 };
 
+// ─── Scouters (público: para el formulario de registro) ───────────────────────────────────
+
+export const scouterApi = {
+  listActive: () => api.get('/scouters'),
+};
+
+// ─── Scouters (admin: CRUD + ranking) ───────────────────────────────────────────────
+
+export const adminScouterApi = {
+  listAll: ()            => api.get('/scouters/all'),
+  create:  (data)        => api.post('/scouters', data),
+  update:  (id, data)    => api.patch(`/scouters/${id}`, data),
+  remove:  (id)          => api.delete(`/scouters/${id}`),
+};
+
 // ─── Perfil Empresarial del Cliente ──────────────────────────────────────────
 
 export const clientProfileApi = {

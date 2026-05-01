@@ -37,7 +37,7 @@
 /* ── Card del formulario ──────────────────────────────────────────────────── */
 .ap-card {
   width: 100%;
-  max-width: 420px;
+  max-width: 480px;
   background: var(--surface);
   border: 1.5px solid var(--border);
   border-radius: var(--radius-lg);
@@ -46,6 +46,12 @@
   display: flex;
   flex-direction: column;
   gap: 0;
+}
+
+/* Animación de entrada suave */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 /* Logo circular */

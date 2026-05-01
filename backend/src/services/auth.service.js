@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt    = require('jsonwebtoken');
 const prisma = require('../config/prisma');
+const scouterService = require('./scouter.service');
 
 const SALT_ROUNDS = 10;
 
@@ -18,15 +19,37 @@ const generateToken = (user) => {
 /**
  * Registra un nuevo usuario en la base de datos.
  * Correos repetidos permitidos (entorno de desarrollo/pruebas).
+ * Acepta referredBy (NONE | PAGE | SCOUTER), scouterId y scouter rating.
  */
-const register = async ({ name, email, password, role, phone }) => {
+const register = async ({ name, email, password, role, phone, referredBy, scouterId, scouterRating, scouterComment }) => {
   const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
 
+  const userData = {
+    name, email, password: hashedPassword, role, phone: phone || null,
+    referredBy: referredBy || 'NONE',
+    scouterId: (referredBy === 'SCOUTER' && scouterId) ? parseInt(scouterId) : null,
+  };
+
   const user = await prisma.user.create({
-    data: { name, email, password: hashedPassword, role, phone: phone || null },
+    data: userData,
     select: { id: true, name: true, email: true, role: true, phone: true,
-              profileCompleted: true, createdAt: true },
+              profileCompleted: true, createdAt: true, referredBy: true, scouterId: true },
   });
+
+  // Registrar el rating del scouter si aplica
+  if (referredBy === 'SCOUTER' && scouterId && scouterRating) {
+    try {
+      await scouterService.submitRating({
+        scouterId: parseInt(scouterId),
+        stars: parseInt(scouterRating),
+        comment: scouterComment || null,
+        clientUserId: user.id,
+      });
+    } catch (e) {
+      // No bloquear el registro si el rating falla
+      console.warn('[scouter] Error al guardar rating:', e.message);
+    }
+  }
 
   const token = generateToken(user);
   return { user, token };
