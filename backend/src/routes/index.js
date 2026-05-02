@@ -15,6 +15,7 @@ const dashboardRoutes           = require('./dashboard.routes');
 const scouterRoutes             = require('./scouter.routes');
 const supplierPortalRoutes      = require('./supplier-portal.routes');
 const marketplaceRoutes         = require('./marketplace.routes');
+const notificationRoutes        = require('./notification.routes');
 
 
 const router = Router();
@@ -49,6 +50,9 @@ router.use('/supplier', supplierPortalRoutes);
 
 // ── Marketplace B2B (catálogo, carrito, wishlist, checkout) ──────────────────
 router.use('/marketplace', marketplaceRoutes);
+
+// ── Notificaciones ────────────────────────────────────────────────────────────
+router.use('/notifications', notificationRoutes);
 
 
 // ── Ruta de prueba ────────────────────────────────────────────────────────────

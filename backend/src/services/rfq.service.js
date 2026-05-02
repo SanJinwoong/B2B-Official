@@ -152,4 +152,59 @@ const getAllRFQs = async () => {
   });
 };
 
-module.exports = { createRFQ, getMyRFQs, getRFQById, approveQuote, addQuoteToRFQ, getAllRFQs };
+const submitRFQRating = async (clientId, rfqId, { supplierId, stars, comment, images = [] }) => {
+  if (!supplierId) {
+    const err = new Error('El proveedor es requerido para la calificación.');
+    err.statusCode = 400; throw err;
+  }
+  
+  // Verificar si el RFQ pertenece al cliente y tiene una orden
+  const rfq = await prisma.rFQ.findFirst({
+    where: { id: rfqId, clientId, status: 'APPROVED' },
+    include: { order: true }
+  });
+  
+  if (!rfq || !rfq.order) {
+    const err = new Error('Solo puedes calificar cotizaciones que hayan sido aprobadas y convertidas a pedido.');
+    err.statusCode = 403; throw err;
+  }
+
+  // Opcional: Validar que la orden esté DELIVERED (omitido si se permite calificar antes)
+  
+  const rating = await prisma.rFQRating.upsert({
+    where: { rfqId_clientId: { rfqId, clientId } },
+    create: {
+      rfqId,
+      clientId,
+      supplierId: Number(supplierId),
+      stars: Number(stars),
+      comment: comment || null,
+      images: JSON.stringify(images),
+      verified: true
+    },
+    update: {
+      stars: Number(stars),
+      comment: comment || null,
+      images: JSON.stringify(images),
+    }
+  });
+
+  // Recalcular rfqRating del proveedor
+  const supplierAgg = await prisma.rFQRating.aggregate({
+    where: { supplierId: Number(supplierId) },
+    _avg: { stars: true },
+    _count: { stars: true },
+  });
+
+  await prisma.user.update({
+    where: { id: Number(supplierId) },
+    data: {
+      rfqRating: supplierAgg._avg.stars || 0,
+      rfqRatingCount: supplierAgg._count.stars,
+    }
+  });
+
+  return rating;
+};
+
+module.exports = { createRFQ, getMyRFQs, getRFQById, approveQuote, addQuoteToRFQ, getAllRFQs, submitRFQRating };

@@ -98,6 +98,7 @@ const getMyOrders = async (supplierId, { status } = {}) => {
       client: { select: { id: true } },
       phases: true,
       payments: { select: { status: true, amount: true, type: true } },
+      orderItems: { include: { product: { include: { images: true } } } },
     },
     orderBy: { createdAt: 'desc' },
   });
@@ -120,6 +121,12 @@ const getMyOrders = async (supplierId, { status } = {}) => {
       .filter((p) => p.status === 'PAID')
       .reduce((s, p) => s + p.amount, 0),
     isOverdue: o.deliveryDate ? new Date(o.deliveryDate) < new Date() && o.status !== 'DELIVERED' : false,
+    createdAt: o.createdAt,
+    items: o.orderItems.map(i => ({
+      productName: i.product.name,
+      quantity: i.quantity,
+      image: i.product.images?.find(img => img.isPrimary)?.url || i.product.images?.[0]?.url || null
+    })),
   }));
 };
 
@@ -168,6 +175,18 @@ const updateOrderStatus = async (supplierId, orderId, { status, notes }) => {
       where: { orderId: Number(orderId), phase: PHASE_MAP[status], status: 'PENDING' },
       data:  { status: 'IN_PROGRESS' },
     });
+  }
+
+  // Notify client if order is in transit
+  if (status === 'IN_TRANSIT') {
+    const { notifyUser } = require('./notification.service');
+    await notifyUser(
+      order.clientId,
+      'ORDER_SHIPPED',
+      'Tu pedido ha sido enviado',
+      `El proveedor ha enviado tu pedido ${order.orderNumber}. Por favor confírmalo cuando lo recibas.`,
+      `/client/orders/${order.id}`
+    );
   }
 
   return updated;

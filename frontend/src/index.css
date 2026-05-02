@@ -4,8 +4,12 @@
    Paleta: Azul #2563eb (light) · Gris carbón neutro (dark, sin tonos morados)
    ═══════════════════════════════════════════════════════════════════════════ */
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
 /* ── Tokens Light ────────────────────────────────────────────────────────── */
 :root {
+  --font: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  
   /* Fondos */
   --bg-page:         #f1f5f9;
   --bg-card:         #ffffff;

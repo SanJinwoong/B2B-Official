@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, ShoppingCart, Trash2, Plus, Minus, ShoppingBag, ArrowRight } from 'lucide-react';
+import { X, ShoppingCart, Trash2, Plus, Minus, ShoppingBag, ArrowRight, CreditCard, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { marketplaceApi } from '../../../api/api';
 
@@ -9,6 +9,7 @@ export default function CartDrawer({ onClose, onCartChange }) {
   const [cart, setCart]         = useState(null);
   const [loading, setLoading]   = useState(true);
   const [checking, setChecking] = useState(false);
+  const [showPayment, setShowPayment] = useState(false);
   const navigate = useNavigate();
 
   const fetchCart = async () => {
@@ -37,17 +38,29 @@ export default function CartDrawer({ onClose, onCartChange }) {
     } catch(e) { console.error(e); }
   };
 
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
+
   const handleCheckout = async () => {
     setChecking(true);
     try {
-      const r = await marketplaceApi.checkout({});
-      const { orderCount } = r.data.data;
-      onClose();
-      navigate('/client/orders');
-      alert(`¡Pedido confirmado! Se generaron ${orderCount} orden(es). Los proveedores serán notificados.`);
+      // Simulate network delay for payment processing
+      await new Promise(r => setTimeout(r, 1500));
+      await marketplaceApi.checkout({});
+      
+      setChecking(false);
+      setPaymentSuccess(true);
+      
+      // Wait for user to see success, then navigate
+      setTimeout(() => {
+        setShowPayment(false);
+        onClose();
+        navigate('/client/orders');
+      }, 2500);
+
     } catch(e) {
       alert(e.response?.data?.message || 'Error al procesar el pedido.');
-    } finally { setChecking(false); }
+      setChecking(false);
+    }
   };
 
   const items = cart?.items || [];
@@ -119,12 +132,67 @@ export default function CartDrawer({ onClose, onCartChange }) {
               <span>Total estimado</span>
               <strong className="cart-total">{fmt(total)}</strong>
             </div>
-            <button className="cart-checkout-btn" onClick={handleCheckout} disabled={checking}>
-              {checking ? 'Procesando...' : <>Confirmar Pedido <ArrowRight size={16}/></>}
+            <button className="cart-checkout-btn" onClick={() => setShowPayment(true)}>
+              Confirmar Pedido <ArrowRight size={16}/>
             </button>
           </div>
         )}
       </div>
+
+      {/* ── Modal de Simulación de Pago ── */}
+      {showPayment && (
+        <div className="cart-backdrop" style={{ zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="cart-drawer" style={{ right: 'auto', width: '400px', height: 'auto', borderRadius: '12px', padding: '24px', transition: 'all 0.3s' }}>
+            {paymentSuccess ? (
+              <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                <CheckCircle size={60} color="var(--success)" style={{ margin: '0 auto 16px', animation: 'bounce 0.5s ease' }} />
+                <h2 style={{ color: 'var(--success)', marginBottom: '8px' }}>¡Pago Exitoso!</h2>
+                <p style={{ color: 'var(--text-muted)' }}>Órdenes generadas correctamente. Los proveedores han sido notificados.</p>
+              </div>
+            ) : (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                  <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}><CreditCard size={20} /> Pago Seguro B2B</h3>
+                  <button onClick={() => !checking && setShowPayment(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
+                    <X size={20} />
+                  </button>
+                </div>
+                <div style={{ background: 'var(--surface-2)', padding: '16px', borderRadius: '8px', marginBottom: '20px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Total a Pagar</div>
+                  <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text)' }}>{fmt(total)}</div>
+                </div>
+                
+                <div style={{ border: '1px solid var(--border)', borderRadius: '8px', padding: '16px', marginBottom: '20px' }}>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '8px' }}>Método de Pago</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--surface)', padding: '12px', borderRadius: '6px', border: '1px solid var(--border)' }}>
+                    <div style={{ width: '40px', height: '24px', background: '#1e3a8a', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '10px', fontWeight: 'bold' }}>VISA</div>
+                    <div style={{ fontFamily: 'monospace', letterSpacing: '2px', color: 'var(--text)' }}>**** **** **** 4242</div>
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '12px', textAlign: 'center' }}>
+                    Modo Simulación: Se aprobará automáticamente la transacción bancaria.
+                  </div>
+                </div>
+
+                <button 
+                  className="cart-checkout-btn" 
+                  onClick={handleCheckout} 
+                  disabled={checking}
+                  style={{ width: '100%', display: 'flex', justifyContent: 'center', background: checking ? 'var(--text-muted)' : 'var(--accent)' }}
+                >
+                  {checking ? (
+                    <>
+                      <div className="sc-spinner" style={{ width: 16, height: 16, borderTopColor: '#fff', marginRight: 8 }}/> 
+                      Procesando pago...
+                    </>
+                  ) : (
+                    <>Pagar {fmt(total)} <CheckCircle size={16} /></>
+                  )}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 }

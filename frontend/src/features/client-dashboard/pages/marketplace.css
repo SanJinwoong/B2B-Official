@@ -2,17 +2,45 @@
 .mk2-shell { display:flex; flex-direction:column; min-height:100vh; background:var(--bg); }
 
 /* Hero */
-.mk2-hero { background:linear-gradient(135deg,#1e3a8a 0%,#2563eb 60%,#3b82f6 100%); padding:40px 32px 32px; position:relative; }
-.mk2-hero-content { max-width:700px; }
+.mk2-hero { 
+  padding: 40px 32px 32px; 
+  position: relative; 
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.mk2-hero-bgs {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 0;
+}
+.mk2-hero-bg {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-size: cover;
+  background-position: center;
+  opacity: 0;
+  transition: opacity 1.2s ease-in-out;
+}
+.mk2-hero-bg.active {
+  opacity: 1;
+}
+.mk2-hero-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(135deg, rgba(30, 58, 138, 0.88) 0%, rgba(37, 99, 235, 0.85) 100%);
+  z-index: 1;
+}
+.mk2-hero-content { max-width:700px; position: relative; z-index: 2; }
 .mk2-hero-title { font-size:2rem; font-weight:800; color:#fff; margin:0 0 6px; }
 .mk2-hero-sub { font-size:1rem; color:rgba(255,255,255,.8); margin:0 0 20px; }
-.mk2-hero-search { display:flex; align-items:center; background:#fff; border-radius:12px; padding:6px 6px 6px 16px; gap:8px; box-shadow:0 8px 32px rgba(0,0,0,.2); }
+.mk2-hero-search { display:flex; align-items:center; background:var(--surface); border-radius:12px; padding:6px 6px 6px 16px; gap:8px; box-shadow:0 8px 32px rgba(0,0,0,.2); }
 .mk2-hero-search-icon { color:#64748b; flex-shrink:0; }
-.mk2-hero-search-input { flex:1; border:none; outline:none; font-size:1rem; color:#0f172a; background:transparent; }
+.mk2-hero-search-input { flex:1; border:none; outline:none; font-size:1rem; color:var(--text); background:transparent; }
 .mk2-hero-search-clear { background:none; border:none; color:#94a3b8; cursor:pointer; display:flex; padding:4px; }
 .mk2-hero-search-btn { background:#2563eb; color:#fff; border:none; border-radius:8px; padding:10px 20px; font-weight:700; cursor:pointer; white-space:nowrap; }
 .mk2-hero-search-btn:hover { background:#1d4ed8; }
-.mk2-cart-fab { position:absolute; top:24px; right:32px; display:flex; align-items:center; gap:8px; background:rgba(255,255,255,.15); backdrop-filter:blur(8px); color:#fff; border:1.5px solid rgba(255,255,255,.4); border-radius:50px; padding:10px 20px; font-weight:700; cursor:pointer; transition:background .15s; }
+.mk2-cart-fab { position:absolute; top:24px; right:32px; z-index:2; display:flex; align-items:center; gap:8px; background:rgba(255,255,255,.15); backdrop-filter:blur(8px); color:#fff; border:1.5px solid rgba(255,255,255,.4); border-radius:50px; padding:10px 20px; font-weight:700; cursor:pointer; transition:background .15s; }
 .mk2-cart-fab:hover { background:rgba(255,255,255,.25); }
 .mk2-cart-fab-badge { background:#ef4444; color:#fff; font-size:.75rem; font-weight:800; min-width:22px; height:22px; border-radius:11px; display:flex; align-items:center; justify-content:center; padding:0 5px; }
 
@@ -35,7 +63,8 @@
 .mk2-sale-filter:hover:not(.active) { border-color:var(--accent); color:var(--accent); }
 .mk2-sidebar-badge { display:flex; align-items:center; gap:12px; padding:12px; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; cursor:pointer; transition:background .12s; margin-top:16px; }
 .mk2-sidebar-badge:hover { background:var(--accent-light); border-color:var(--accent-border); }
-.mk2-sidebar-badge > span { font-size:1.5rem; }
+.mk2-sidebar-badge.active { background:var(--accent-light); border-color:var(--accent); }
+.mk2-sidebar-badge-icon { color: var(--accent); flex-shrink: 0; }
 
 /* Content */
 .mk2-content { flex:1; padding:24px 28px; overflow-x:hidden; }
@@ -55,7 +84,7 @@
 .mk2-card-cat-badge { position:absolute; top:12px; left:12px; z-index:2; background:rgba(255,255,255,.9); color:var(--accent); font-size:.7rem; font-weight:700; padding:3px 8px; border-radius:4px; border:1px solid var(--accent-border); backdrop-filter:blur(4px); }
 .mk2-card-wish { position:absolute; top:10px; right:10px; z-index:2; background:rgba(255,255,255,.9); border:none; width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--text-muted); backdrop-filter:blur(4px); transition:all .15s; }
 .mk2-card-wish:hover { color:var(--error); transform:scale(1.1); }
-.mk2-card-wish.active { color:var(--error); background:#fff; }
+.mk2-card-wish.active { color:var(--error); background:var(--surface); }
 
 .mk2-card-img { height:180px; background:var(--surface-2); display:flex; align-items:center; justify-content:center; cursor:pointer; overflow:hidden; }
 .mk2-card-img img { width:100%; height:100%; object-fit:contain; transition:transform .3s; }
@@ -77,9 +106,9 @@
 
 /* Card action buttons */
 .mk2-card-actions { display:flex; gap:8px; margin-top:auto; padding-top:12px; border-top:1px solid var(--surface-2); }
-.mk2-btn-addcart { flex:1; display:flex; align-items:center; justify-content:center; gap:6px; padding:9px 6px; background:var(--accent); color:#fff; border:none; border-radius:7px; font-size:.82rem; font-weight:600; cursor:pointer; transition:background .12s; }
+.mk2-btn-addcart { flex:1.3; display:flex; align-items:center; justify-content:center; gap:6px; padding:9px 4px; background:var(--accent); color:#fff; border:none; border-radius:7px; font-size:.78rem; font-weight:600; cursor:pointer; transition:background .12s; white-space:nowrap; }
 .mk2-btn-addcart:hover { background:var(--accent-hover); }
-.mk2-btn-buynow { flex:1; padding:9px 6px; background:var(--surface-2); color:var(--text); border:1px solid var(--border); border-radius:7px; font-size:.82rem; font-weight:600; cursor:pointer; transition:all .12s; }
+.mk2-btn-buynow { flex:1; padding:9px 4px; background:var(--surface-2); color:var(--text); border:1px solid var(--border); border-radius:7px; font-size:.78rem; font-weight:600; cursor:pointer; transition:all .12s; white-space:nowrap; }
 .mk2-btn-buynow:hover { background:var(--accent-light); border-color:var(--accent); color:var(--accent); }
 
 /* Skeleton */

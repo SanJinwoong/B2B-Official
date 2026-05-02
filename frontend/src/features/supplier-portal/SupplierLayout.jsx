@@ -1,6 +1,8 @@
-import { NavLink, useNavigate, Outlet } from 'react-router-dom';
+import { useState, useRef, useEffect } from 'react';
+import { NavLink, useNavigate, Outlet, Link } from 'react-router-dom';
 import { LayoutDashboard, Zap, Package, BookOpen, MessageSquare, Star, LogOut, Bell, ChevronDown } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import NotificationBell from '../../components/notifications/NotificationBell';
 import './supplier-portal.css';
 
 const NAV = [
@@ -30,6 +32,16 @@ function StarRating({ value = 0 }) {
 export default function SupplierLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [dropOpen, setDropOpen] = useState(false);
+  const dropRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropRef.current && !dropRef.current.contains(e.target)) setDropOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleLogout = () => { logout(); navigate('/login'); };
   const companyInit = initials(user?.name);
@@ -94,19 +106,32 @@ export default function SupplierLayout() {
       <div className="sp-main">
         {/* Top bar */}
         <header className="sp-topbar">
-          <div className="sp-topbar-bell">
-            <Bell size={18} />
-            <div className="sp-topbar-bell-dot" />
-          </div>
-          <div className="sp-topbar-user">
-            <div className="sp-avatar" style={{ width:32, height:32, fontSize:12 }}>
-              {user?.avatar ? <img src={user.avatar} alt="" /> : initials(user?.name)}
+          <NotificationBell />
+          <div style={{ position: 'relative' }} ref={dropRef}>
+            <div className="sp-topbar-user" onClick={() => setDropOpen(!dropOpen)} style={{ cursor: 'pointer' }}>
+              <div className="sp-avatar" style={{ width:32, height:32, fontSize:12 }}>
+                {user?.avatar ? <img src={user.avatar} alt="" /> : initials(user?.name)}
+              </div>
+              <div>
+                <div className="sp-topbar-name">{user?.name}</div>
+                <div className="sp-topbar-company">{user?.email}</div>
+              </div>
+              <ChevronDown size={14} color="var(--text-muted)" />
             </div>
-            <div>
-              <div className="sp-topbar-name">{user?.name}</div>
-              <div className="sp-topbar-company">{user?.email}</div>
-            </div>
-            <ChevronDown size={14} color="var(--text-muted)" />
+            {dropOpen && (
+              <div className="sp-header-dropdown" style={{
+                position: 'absolute', top: 'calc(100% + 8px)', right: 0, width: 220,
+                background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12,
+                boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1)', zIndex: 1000, overflow: 'hidden'
+              }}>
+                <Link to="/proveedor/configuracion" className="sp-dropdown-item" onClick={() => setDropOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 16px', color: 'var(--text)', textDecoration: 'none', borderBottom: '1px solid var(--border)' }}>
+                  <Star size={15} /> Configuración
+                </Link>
+                <button className="sp-dropdown-item" onClick={handleLogout} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 16px', color: 'var(--danger)', textDecoration: 'none', background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
+                  <LogOut size={15} /> Cerrar Sesión
+                </button>
+              </div>
+            )}
           </div>
         </header>
 

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, FileText, Download, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, FileText, Download, CheckCircle, XCircle, AlertTriangle, Truck, Star } from 'lucide-react';
 import { clientOrdersApi } from '../../../api/api';
+import ReviewModal from '../components/ReviewModal';
 
 const PHASES = [
   { key:'INITIAL_PAYMENT',   label:'Pago Inicial' },
@@ -18,8 +19,13 @@ export default function ClientOrderDetailPage() {
   const { id } = useParams();
   const [order, setOrder]   = useState(null);
   const [loading,setLoading]= useState(true);
+  const [confirmingReceipt, setConfirmingReceipt] = useState(null);
+  const [showReview, setShowReview] = useState(false);
 
-  const load = () => clientOrdersApi.getById(id).then(r=>setOrder(r.data?.data || r.data)).finally(()=>setLoading(false));
+  const load = () => clientOrdersApi.getById(id).then(r=>{
+    setOrder(r.data?.data || r.data);
+    setConfirmingReceipt(null); // Reset when reloaded
+  }).finally(()=>setLoading(false));
   useEffect(() => { load(); }, [id]);
 
   if (loading) return <div className="cd-empty"><p className="cd-empty-text">Cargando...</p></div>;
@@ -72,6 +78,81 @@ export default function ClientOrderDetailPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Acción principal del cliente: Confirmar Recepción */}
+      {order.status === 'IN_TRANSIT' && (
+        <div style={{
+          background: 'var(--surface)', border: '1px solid var(--success)', borderRadius: 12, padding: '1.5rem', marginBottom: '1.5rem', 
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          transition: 'all 0.3s'
+        }}>
+          <div>
+            <h3 style={{ margin: 0, color: 'var(--success)', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Truck size={18} /> Pedido en Tránsito
+            </h3>
+            <p style={{ margin: '4px 0 0', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+              El proveedor ya ha enviado tu pedido. Por favor, confirma una vez que lo hayas recibido en buenas condiciones.
+            </p>
+          </div>
+          
+          {confirmingReceipt === 'done' ? (
+            <div style={{ color: 'var(--success)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', animation: 'bounce 0.5s ease' }}>
+              <CheckCircle size={20} /> ¡Recibido!
+            </div>
+          ) : (
+            <button 
+              className="cd-btn-primary" 
+              style={{ 
+                gap: '.4rem', background: confirmingReceipt ? 'var(--text-muted)' : 'var(--success)', 
+                whiteSpace: 'nowrap', opacity: confirmingReceipt ? 0.8 : 1, transition: 'all 0.3s'
+              }}
+              disabled={!!confirmingReceipt}
+              onClick={async () => {
+                setConfirmingReceipt('loading');
+                try {
+                  await new Promise(r => setTimeout(r, 800)); // Smooth UX
+                  await clientOrdersApi.confirmReceipt(order.id);
+                  setConfirmingReceipt('done');
+                  setTimeout(() => {
+                    load();
+                    setShowReview(true); // Abre el modal de reseñas
+                  }, 1000);
+                } catch(e) {
+                  setConfirmingReceipt(null);
+                  console.error(e);
+                }
+              }}
+            >
+              {confirmingReceipt === 'loading' ? (
+                <><div className="sc-spinner" style={{ width: 14, height: 14, borderTopColor: '#fff' }}/> Confirmando...</>
+              ) : (
+                <><CheckCircle size={16} /> Confirmar Recepción</>
+              )}
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Acción si ya está entregado: Calificar Productos */}
+      {order.status === 'DELIVERED' && (
+        <div style={{ textAlign: 'right', marginBottom: '1.5rem' }}>
+          <button 
+            className="cd-btn-primary" 
+            style={{ background: '#f59e0b', color: '#fff', border: 'none', gap: '8px' }}
+            onClick={() => setShowReview(true)}
+          >
+            <Star size={16} /> Calificar Productos
+          </button>
+        </div>
+      )}
+
+      {showReview && (
+        <ReviewModal 
+          order={order} 
+          onClose={() => setShowReview(false)} 
+          onSuccess={() => console.log('Reseñas guardadas')} 
+        />
       )}
 
       {/* Stepper */}

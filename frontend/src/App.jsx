@@ -34,6 +34,9 @@ import ErrorBoundary          from './components/ErrorBoundary';
 import SupplierLayout         from './features/supplier-portal/SupplierLayout';
 import SupplierDashboardPage  from './features/supplier-portal/pages/SupplierDashboardPage';
 import SupplierCatalogPage    from './features/supplier-portal/pages/SupplierCatalogPage';
+import SupplierOrdersPage     from './features/supplier-portal/pages/SupplierOrdersPage';
+import SupplierPerformancePage from './features/supplier-portal/pages/SupplierPerformancePage';
+import SupplierSettingsPage    from './features/supplier-portal/pages/SupplierSettingsPage';
 
 const App = () => {
   return (
@@ -76,7 +79,7 @@ const App = () => {
           <Route
             path="/perfil"
             element={
-              <PrivateRoute roles={['CLIENT', 'SUPPLIER']}>
+              <PrivateRoute roles={['SUPPLIER']}>
                 <UserProfilePage />
               </PrivateRoute>
             }
@@ -157,6 +160,7 @@ const App = () => {
             <Route path="messages" element={<ClientMessagesPage />} />
             <Route path="payments" element={<ClientPaymentsPage />} />
             <Route path="empresa"  element={<ClientEmpresaPage />} />
+            <Route path="perfil"   element={<UserProfilePage />} />
           </Route>
 
           {/* Portal Proveedor */}
@@ -173,10 +177,12 @@ const App = () => {
             <Route index             element={<Navigate to="/proveedor/dashboard" replace />} />
             <Route path="dashboard"  element={<SupplierDashboardPage />} />
             <Route path="rfqs"       element={<SupplierDashboardPage />} />
-            <Route path="pedidos"    element={<SupplierDashboardPage />} />
+            <Route path="pedidos"    element={<SupplierOrdersPage />} />
             <Route path="catalogo"   element={<SupplierCatalogPage />} />
+            <Route path="catalogo/:id" element={<ProductDetailPage />} />
             <Route path="mensajes"   element={<SupplierDashboardPage />} />
-            <Route path="rendimiento" element={<SupplierDashboardPage />} />
+            <Route path="rendimiento" element={<SupplierPerformancePage />} />
+            <Route path="configuracion" element={<SupplierSettingsPage />} />
           </Route>
 
           {/* Fallback */}

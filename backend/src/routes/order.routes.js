@@ -62,5 +62,14 @@ router.patch(
   orderController.updateOrderStatus
 );
 
+// PATCH /api/orders/:id/confirm-receipt
+// 🔒 Solo CLIENT puede confirmar de recibido
+router.patch(
+  '/:id/confirm-receipt',
+  authenticate,
+  authorize('CLIENT'),
+  orderController.confirmReceipt
+);
+
 module.exports = router;
 

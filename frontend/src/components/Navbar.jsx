@@ -103,7 +103,7 @@ const Navbar = () => {
 
               {/* Avatar + perfil — solo CLIENT y SUPPLIER */}
               {(isClient || isSupplier) ? (
-                <Link to="/perfil" className="nb-profile-btn" title="Mi perfil">
+                <Link to={isClient ? "/client/perfil" : "/perfil"} className="nb-profile-btn" title="Mi perfil">
                   <div className="nb-avatar">{initials}</div>
                   <div className="nb-user-info">
                     <span className="nb-user-name">{user?.name}</span>

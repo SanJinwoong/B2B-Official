@@ -1,21 +1,44 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Search, ShoppingCart, Heart, Star, Package, X, Clock, ChevronLeft, ChevronRight, ShoppingBag } from 'lucide-react';
+import { Search, ShoppingCart, Heart, Star, Package, X, Clock, ChevronLeft, ChevronRight, ShoppingBag, Store, Factory, Utensils, Scissors, Truck, FlaskConical, Zap, Hammer, ClipboardList, Trophy, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { marketplaceApi } from '../../../api/api';
-import CartDrawer from '../components/CartDrawer';
 import './marketplace.css';
 
+export function triggerCartAnimation(btnRect) {
+  const target = document.getElementById('global-cart-btn');
+  if (!target || !btnRect) return;
+  const targetRect = target.getBoundingClientRect();
+  const startX = btnRect.left + btnRect.width / 2;
+  const startY = btnRect.top + btnRect.height / 2;
+  const endX = targetRect.left + targetRect.width / 2;
+  const endY = targetRect.top + targetRect.height / 2;
+  const particle = document.createElement('div');
+  particle.innerText = '+1';
+  particle.className = 'cart-fly-particle';
+  particle.style.left = `${startX}px`;
+  particle.style.top = `${startY}px`;
+  document.body.appendChild(particle);
+  particle.getBoundingClientRect(); // reflow
+  particle.style.transform = `translate(${endX - startX}px, ${endY - startY}px) scale(0.5)`;
+  particle.style.opacity = '0';
+  setTimeout(() => {
+    particle.remove();
+    window.dispatchEvent(new CustomEvent('cart-bounce'));
+  }, 600);
+}
+
 const CATEGORIES = [
-  { id: 'all',          label: 'Todos los productos', icon: '🏪', count: null },
-  { id: 'empaques',     label: 'Empaques y Envases',  icon: '📦' },
-  { id: 'manufactura',  label: 'Manufactura Industrial', icon: '🏭' },
-  { id: 'alimentos',    label: 'Alimentos y Bebidas',  icon: '🍽️' },
-  { id: 'textiles',     label: 'Textiles',             icon: '🧵' },
-  { id: 'logistica',    label: 'Logística',            icon: '🚚' },
-  { id: 'quimicos',     label: 'Químicos',             icon: '🧪' },
-  { id: 'electronica',  label: 'Electrónica',          icon: '⚡' },
-  { id: 'construccion', label: 'Construcción',         icon: '🏗️' },
-  { id: 'otros',        label: 'Otros',                icon: '📋' },
+  { id: 'all',          label: 'Todos los productos', icon: <Store size={18} /> },
+  { id: 'favorites',    label: 'Mis Favoritos',       icon: <Heart size={18} /> },
+  { id: 'empaques',     label: 'Empaques y Envases',  icon: <Package size={18} /> },
+  { id: 'manufactura',  label: 'Manufactura Industrial', icon: <Factory size={18} /> },
+  { id: 'alimentos',    label: 'Alimentos y Bebidas',  icon: <Utensils size={18} /> },
+  { id: 'textiles',     label: 'Textiles y Confección', icon: <Scissors size={18} /> },
+  { id: 'logistica',    label: 'Logística',            icon: <Truck size={18} /> },
+  { id: 'quimicos',     label: 'Químicos',             icon: <FlaskConical size={18} /> },
+  { id: 'electronica',  label: 'Electrónica',          icon: <Zap size={18} /> },
+  { id: 'construccion', label: 'Construcción',         icon: <Hammer size={18} /> },
+  { id: 'otros',        label: 'Otros',                icon: <ClipboardList size={18} /> },
 ];
 
 const SORT_OPTIONS = [
@@ -93,8 +116,8 @@ function ProductCard({ product, inWishlist, onAddCart, onToggleWishlist }) {
         {/* Actions */}
         <div className="mk2-card-actions">
           <button className="mk2-btn-addcart"
-            onClick={e => { e.stopPropagation(); onAddCart(product); }}>
-            <ShoppingCart size={14}/> Añadir al carrito
+            onClick={e => { e.stopPropagation(); onAddCart(e, product); }}>
+            <ShoppingCart size={16}/> Añadir al carrito
           </button>
           <button className="mk2-btn-buynow"
             onClick={() => navigate(`/client/marketplace/${product.id}`)}>
@@ -127,21 +150,55 @@ export default function MarketplacePage() {
   const [saleType, setSaleType]   = useState('all');
   const [sortBy, setSortBy]       = useState('newest');
   const [wishlist, setWishlist]   = useState(new Set());
-  const [cartOpen, setCartOpen]   = useState(false);
-  const [cartCount, setCartCount] = useState(0);
   const [addedId, setAddedId]     = useState(null);
   const debounce = useRef(null);
+  
+  // Hero Carousel State
+  const [heroImages, setHeroImages] = useState([]);
+  const [activeHero, setActiveHero] = useState(0);
 
   const fetchProducts = useCallback(async (page = 1) => {
     setLoading(true);
     try {
-      const params = { page, limit: 12, sortBy };
-      if (search)             params.search   = search;
-      if (category !== 'all') params.category = category;
-      if (saleType !== 'all') params.saleType = saleType;
-      const r = await marketplaceApi.search(params);
-      setProducts(r.data.products || []);
-      setPagination(r.data.pagination || { total: 0, page: 1, pages: 1 });
+      if (category === 'favorites') {
+        const r = await marketplaceApi.getWishlist();
+        let fetchedProducts = (r.data.data || []).map(i => i.product);
+        if (search) {
+          const s = search.toLowerCase();
+          fetchedProducts = fetchedProducts.filter(p => p.name.toLowerCase().includes(s) || p.category?.toLowerCase().includes(s) || p.supplierName?.toLowerCase().includes(s));
+        }
+        if (saleType !== 'all') {
+          fetchedProducts = fetchedProducts.filter(p => p.saleType === saleType || p.saleType === 'BOTH');
+        }
+        if (sortBy === 'price_asc') fetchedProducts.sort((a,b) => a.price - b.price);
+        if (sortBy === 'price_desc') fetchedProducts.sort((a,b) => b.price - a.price);
+        if (sortBy === 'rating') fetchedProducts.sort((a,b) => (b.avgRating || 0) - (a.avgRating || 0));
+
+        setProducts(fetchedProducts);
+        setPagination({ total: fetchedProducts.length, page: 1, pages: 1 });
+        setHeroImages(['https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&q=80&w=2000']);
+      } else {
+        const params = { page, limit: 12, sortBy };
+        if (search)             params.search   = search;
+        if (category !== 'all') params.category = category;
+        if (saleType !== 'all') params.saleType = saleType;
+        const r = await marketplaceApi.search(params);
+        const fetchedProducts = r.data.products || [];
+        setProducts(fetchedProducts);
+        setPagination(r.data.pagination || { total: 0, page: 1, pages: 1 });
+        
+        // Setup hero images from top-rated products
+        const imgs = fetchedProducts
+          .sort((a, b) => (b.avgRating || 0) - (a.avgRating || 0))
+          .map(p => p.images?.find(i => i.isPrimary)?.url || p.images?.[0]?.url)
+          .filter(url => !!url);
+          
+        if (imgs.length > 0) {
+          setHeroImages(imgs.slice(0, 5));
+        } else {
+          setHeroImages(['https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&q=80&w=2000']);
+        }
+      }
     } catch(e) { console.error(e); }
     finally { setLoading(false); }
   }, [search, category, saleType, sortBy]);
@@ -155,30 +212,44 @@ export default function MarketplacePage() {
     marketplaceApi.getWishlist().then(r => {
       setWishlist(new Set(r.data.data?.map(i => i.product.id)));
     }).catch(() => {});
-    marketplaceApi.getCart().then(r => {
-      setCartCount(r.data.data?.itemCount || 0);
-    }).catch(() => {});
   }, []);
 
-  const handleAddCart = async (product) => {
+  useEffect(() => {
+    if (heroImages.length <= 1) return;
+    const interval = setInterval(() => {
+      setActiveHero(curr => (curr + 1) % heroImages.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [heroImages]);
+
+  const handleAddCart = async (e, prod) => {
+    const btnRect = e.currentTarget.getBoundingClientRect();
     try {
-      await marketplaceApi.addToCart(product.id, product.moq || 1);
-      setCartCount(c => c + 1);
-      setAddedId(product.id);
-      setTimeout(() => setAddedId(null), 2000);
-    } catch(e) {
-      alert(e.response?.data?.message || 'Error al agregar al carrito.');
+      await marketplaceApi.addToCart(prod.id, prod.moq || 1);
+      triggerCartAnimation(btnRect);
+      setAddedId(prod.id);
+      setTimeout(() => setAddedId(null), 3000);
+    } catch(err) {
+      alert(err.response?.data?.message || 'Error al agregar al carrito.');
     }
   };
 
   const handleToggleWishlist = async (productId) => {
     try {
       const r = await marketplaceApi.toggleWishlist(productId);
+      const isNowInWishlist = r.data.data.inWishlist;
       setWishlist(prev => {
         const next = new Set(prev);
-        r.data.data.inWishlist ? next.add(productId) : next.delete(productId);
+        isNowInWishlist ? next.add(productId) : next.delete(productId);
         return next;
       });
+      if (category === 'favorites' && !isNowInWishlist) {
+        setProducts(prev => {
+          const updated = prev.filter(p => p.id !== productId);
+          setPagination(curr => ({ ...curr, total: updated.length }));
+          return updated;
+        });
+      }
     } catch(e) { console.error(e); }
   };
 
@@ -189,6 +260,17 @@ export default function MarketplacePage() {
 
       {/* ── Hero search bar ── */}
       <div className="mk2-hero">
+        <div className="mk2-hero-bgs">
+          {heroImages.map((img, i) => (
+            <div 
+              key={i} 
+              className={`mk2-hero-bg ${i === activeHero ? 'active' : ''}`}
+              style={{ backgroundImage: `url(${img})` }}
+            />
+          ))}
+          <div className="mk2-hero-overlay" />
+        </div>
+        
         <div className="mk2-hero-content">
           <h1 className="mk2-hero-title">Marketplace B2B México</h1>
           <p className="mk2-hero-sub">Conecta con los mejores proveedores industriales</p>
@@ -207,10 +289,10 @@ export default function MarketplacePage() {
           </div>
         </div>
         {/* Cart button floating */}
-        <button className="mk2-cart-fab" onClick={() => setCartOpen(true)}>
+        <div className="mk2-cart-fab" onClick={() => window.dispatchEvent(new CustomEvent('open-cart'))}>
           <ShoppingCart size={20} />
-          {cartCount > 0 && <span className="mk2-cart-fab-badge">{cartCount}</span>}
-        </button>
+          <span>Ver Carrito</span>
+        </div>
       </div>
 
       {/* ── Main layout: sidebar + content ── */}
@@ -242,15 +324,15 @@ export default function MarketplacePage() {
           </div>
 
           {/* Bestsellers badge */}
-          <div className="mk2-sidebar-badge">
-            <span>🏆</span>
+          <div className={`mk2-sidebar-badge ${sortBy === 'bestseller' ? 'active' : ''}`} onClick={() => setSortBy('bestseller')}>
+            <Trophy size={28} strokeWidth={1.5} className="mk2-sidebar-badge-icon" />
             <div>
               <div style={{ fontWeight: 700, fontSize: '0.85rem' }}>Más vendidos</div>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Ver los más populares</div>
             </div>
           </div>
-          <div className="mk2-sidebar-badge" style={{ marginTop: 8 }}>
-            <span>⭐</span>
+          <div className={`mk2-sidebar-badge ${sortBy === 'newest' ? 'active' : ''}`} style={{ marginTop: 8 }} onClick={() => setSortBy('newest')}>
+            <Sparkles size={28} strokeWidth={1.5} className="mk2-sidebar-badge-icon" />
             <div>
               <div style={{ fontWeight: 700, fontSize: '0.85rem' }}>Nuevos ingresos</div>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Esta semana</div>
@@ -334,16 +416,8 @@ export default function MarketplacePage() {
       {/* ── Added to cart toast ── */}
       {addedId && (
         <div className="mk2-toast">
-          <ShoppingCart size={16}/> Producto añadido al carrito
+          <ShoppingCart size={18}/> Producto añadido al carrito
         </div>
-      )}
-
-      {/* ── Cart Drawer ── */}
-      {cartOpen && (
-        <CartDrawer
-          onClose={() => setCartOpen(false)}
-          onCartChange={count => setCartCount(count)}
-        />
       )}
     </div>
   );

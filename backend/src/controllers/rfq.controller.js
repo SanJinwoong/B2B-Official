@@ -36,6 +36,13 @@ const approveQuote = async (req, res, next) => {
   } catch (e) { next(e); }
 };
 
+const submitRFQRating = async (req, res, next) => {
+  try {
+    const rating = await rfqService.submitRFQRating(req.user.id, Number(req.params.id), req.body);
+    res.status(201).json(rating);
+  } catch (e) { next(e); }
+};
+
 // Admin: agregar cotización
 const addQuote = async (req, res, next) => {
   try {
@@ -51,4 +58,4 @@ const getAllRFQs = async (req, res, next) => {
   } catch (e) { next(e); }
 };
 
-module.exports = { createRFQ, getMyRFQs, getRFQById, approveQuote, addQuote, getAllRFQs };
+module.exports = { createRFQ, getMyRFQs, getRFQById, approveQuote, submitRFQRating, addQuote, getAllRFQs };

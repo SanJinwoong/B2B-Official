@@ -163,6 +163,16 @@ export const paymentApi = {
 export const clientOrdersApi = {
   getMy:    ()   => api.get('/orders/my'),
   getById:  (id) => api.get(`/orders/${id}`),
+  confirmReceipt: (id) => api.patch(`/orders/${id}/confirm-receipt`),
+};
+
+// ─── Notificaciones ────────────────────────────────────────────────────────────
+export const notificationsApi = {
+  getUnread: () => api.get('/notifications'),
+  markAsRead: (id) => api.patch(`/notifications/${id}/read`),
+  markAllAsRead: () => api.patch('/notifications/read-all'),
+  getSettings: () => api.get('/notifications/settings'),
+  updateSettings: (data) => api.patch('/notifications/settings', data),
 };
 
 // ─── Dashboard Cliente — Resumen general ─────────────────────────────────────
@@ -203,6 +213,11 @@ export const supplierCatalogApi = {
   update:         (id, data)   => api.patch(`/supplier/catalog/${id}`, data),
   remove:         (id)         => api.delete(`/supplier/catalog/${id}`),
   getProfile:     ()           => api.get('/supplier/profile'),
+};
+
+export const supplierOrdersApi = {
+  getOrders:    ()           => api.get('/supplier/orders'),
+  updateStatus: (id, status) => api.patch(`/supplier/orders/${id}/status`, { status }),
 };
 
 export default api;

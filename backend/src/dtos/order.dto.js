@@ -20,11 +20,12 @@ const round2 = (n) => parseFloat(n.toFixed(2));
 
 const itemForClient = (item) => ({
   id:        item.id,
+  productId: item.productId,
   quantity:  item.quantity,
   unitPrice: item.unitPrice,         // precio cliente (con margen)
   subtotal:  round2(item.quantity * item.unitPrice),
   product: item.product
-    ? { id: item.product.id, name: item.product.name }
+    ? { id: item.product.id, name: item.product.name, images: item.product.images }
     : null,
   // ❌ NO supplierUnitPrice — el cliente no ve el costo del proveedor
   // ❌ NO product.supplierPrice

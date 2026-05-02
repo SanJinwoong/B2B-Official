@@ -160,7 +160,7 @@ const getOrderById = async (id) => {
       client: { select: { id: true, name: true, email: true } },
       orderItems: {
         include: {
-          product: { select: { id: true, name: true, price: true } },
+          product: { select: { id: true, name: true, price: true, images: true } },
         },
       },
       phases:    { orderBy: { phaseNumber: 'asc' } },
@@ -195,6 +195,20 @@ const updateOrderStatus = async (id, status) => {
 
   // Verificar que la orden existe
   await getOrderById(id);
+
+  if (status === 'DELIVERED') {
+    const [updated] = await prisma.$transaction([
+      prisma.order.update({
+        where: { id },
+        data: { status },
+      }),
+      prisma.orderPhase.updateMany({
+        where: { orderId: id },
+        data: { status: 'DONE', completedAt: new Date() },
+      }),
+    ]);
+    return updated;
+  }
 
   return prisma.order.update({
     where: { id },

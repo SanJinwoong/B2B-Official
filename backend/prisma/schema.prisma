@@ -51,6 +51,35 @@ model User {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // Notification settings
+  notifyMarketplace Boolean @default(true)
+  notifyRFQs        Boolean @default(true)
+
+  // Calificaciones como Proveedor
+  marketplaceRating      Float @default(0)
+  marketplaceRatingCount Int   @default(0)
+  rfqRating              Float @default(0)
+  rfqRatingCount         Int   @default(0)
+
+  notifications     Notification[] @relation("UserNotifications")
+  rfqRatings        RFQRating[]    @relation("SupplierRFQRatings")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  NOTIFICACIONES
+// ═══════════════════════════════════════════════════════════════════════════
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  type      String   // "MARKETPLACE_ORDER", "ORDER_SHIPPED", "RFQ_NEW", etc.
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  link      String?  // Optional URL to navigate to when clicked
+  createdAt DateTime @default(now())
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -239,6 +268,7 @@ model ProductRating {
 
   stars     Int      // 1–5
   comment   String?
+  images    String   @default("[]") // JSON array of base64/URLs
   verified  Boolean  @default(false) // true si el cliente tiene orden entregada del producto
 
   createdAt DateTime @default(now())
@@ -346,6 +376,8 @@ model RFQ {
   orderId     Int?     @unique
   order       Order?   @relation("RFQOrder", fields: [orderId], references: [id])
 
+  ratings     RFQRating[]
+  
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -369,6 +401,25 @@ model RFQQuote {
 
   isApproved      Boolean  @default(false)
   createdAt       DateTime @default(now())
+}
+
+// ── Reseñas de clientes sobre RFQs ───────────────────────────────────────────
+model RFQRating {
+  id         Int      @id @default(autoincrement())
+  rfqId      Int
+  rfq        RFQ      @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+  clientId   Int
+  supplierId Int
+  supplier   User     @relation("SupplierRFQRatings", fields: [supplierId], references: [id], onDelete: Cascade)
+
+  stars      Int      // 1–5
+  comment    String?
+  images     String   @default("[]") // JSON array
+  verified   Boolean  @default(true)
+
+  createdAt  DateTime @default(now())
+
+  @@unique([rfqId, clientId])
 }
 
 // ── Fases de producción de un pedido (stepper) ────────────────────────────

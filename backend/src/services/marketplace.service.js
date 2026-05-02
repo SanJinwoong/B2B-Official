@@ -131,7 +131,7 @@ const getProductDetail = async (productId, clientId = null) => {
       ratings: {
         select: {
           id: true, stars: true, comment: true, verified: true,
-          clientId: true, createdAt: true,
+          clientId: true, createdAt: true, images: true,
         },
         orderBy: { createdAt: 'desc' },
         take: 10,
@@ -182,7 +182,7 @@ const getProductDetail = async (productId, clientId = null) => {
 //  RATINGS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const submitRating = async (clientId, productId, { stars, comment }) => {
+const submitRating = async (clientId, productId, { stars, comment, images = [] }) => {
   if (stars < 1 || stars > 5) {
     const err = new Error('La calificación debe estar entre 1 y 5.');
     err.statusCode = 400; throw err;
@@ -196,6 +196,11 @@ const submitRating = async (clientId, productId, { stars, comment }) => {
     },
   });
 
+  if (!hasDeliveredOrder) {
+    const err = new Error('Solo puedes calificar productos que hayas comprado y recibido.');
+    err.statusCode = 403; throw err;
+  }
+
   const rating = await prisma.productRating.upsert({
     where: { productId_clientId: { productId: Number(productId), clientId: Number(clientId) } },
     create: {
@@ -203,26 +208,44 @@ const submitRating = async (clientId, productId, { stars, comment }) => {
       clientId:  Number(clientId),
       stars: Number(stars),
       comment: comment || null,
-      verified: !!hasDeliveredOrder,
+      images: JSON.stringify(images),
+      verified: true,
     },
     update: {
       stars: Number(stars),
       comment: comment || null,
+      images: JSON.stringify(images),
     },
   });
 
   // Recalcular avgRating
-  const agg = await prisma.productRating.aggregate({
+  const productAgg = await prisma.productRating.aggregate({
     where:  { productId: Number(productId) },
     _avg:   { stars: true },
     _count: { stars: true },
   });
 
-  await prisma.product.update({
+  const updatedProduct = await prisma.product.update({
     where: { id: Number(productId) },
     data: {
-      avgRating:   agg._avg.stars || 0,
-      ratingCount: agg._count.stars,
+      avgRating:   productAgg._avg.stars || 0,
+      ratingCount: productAgg._count.stars,
+    },
+    select: { supplierId: true },
+  });
+
+  // Recalcular marketplaceRating del proveedor
+  const supplierAgg = await prisma.productRating.aggregate({
+    where: { product: { supplierId: updatedProduct.supplierId } },
+    _avg:   { stars: true },
+    _count: { stars: true },
+  });
+
+  await prisma.user.update({
+    where: { id: updatedProduct.supplierId },
+    data: {
+      marketplaceRating: supplierAgg._avg.stars || 0,
+      marketplaceRatingCount: supplierAgg._count.stars,
     },
   });
 
@@ -365,6 +388,7 @@ const checkout = async (clientId, { notes, deliveryDate } = {}) => {
           clientId:      Number(clientId),
           supplierId:    Number(supplierId),
           deliveryDate:  deliveryDate ? new Date(deliveryDate) : null,
+          sampleStatus:  null,
           orderItems: {
             create: items.map((item) => ({
               productId:         item.productId,
@@ -375,8 +399,8 @@ const checkout = async (clientId, { notes, deliveryDate } = {}) => {
           },
           phases: {
             create: [
-              { phase: 'INITIAL_PAYMENT', phaseNumber: 1, status: 'PENDING' },
-              { phase: 'PRODUCTION',      phaseNumber: 2, status: 'PENDING' },
+              { phase: 'INITIAL_PAYMENT', phaseNumber: 1, status: 'DONE' },
+              { phase: 'PRODUCTION',      phaseNumber: 2, status: 'IN_PROGRESS' },
               { phase: 'QUALITY_CONTROL', phaseNumber: 3, status: 'PENDING' },
               { phase: 'SHIPPING',        phaseNumber: 4, status: 'PENDING' },
               { phase: 'DELIVERED',       phaseNumber: 5, status: 'PENDING' },
@@ -400,6 +424,18 @@ const checkout = async (clientId, { notes, deliveryDate } = {}) => {
     // Vaciar carrito
     await tx.cartItem.deleteMany({ where: { clientId: Number(clientId) } });
   });
+
+  // Notificar a los proveedores (fuera de la transacción para evitar fallos si falla el notify)
+  const { notifyUser } = require('./notification.service');
+  for (const order of orders) {
+    await notifyUser(
+      order.supplierId,
+      'MARKETPLACE_ORDER',
+      'Nuevo pedido del Marketplace',
+      `Tienes un nuevo pedido ${order.orderNumber} por ${order.orderItems?.length || 1} producto(s).`,
+      `/proveedor/pedidos`
+    ).catch(console.error);
+  }
 
   return { orders, orderCount: orders.length };
 };

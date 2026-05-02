@@ -104,11 +104,41 @@ const updateOrderStatus = async (req, res, next) => {
   }
 };
 
+/**
+ * PATCH /api/orders/:id/confirm-receipt
+ * 🔒 authenticate + authorize('CLIENT')
+ * Cliente marca el pedido como entregado.
+ */
+const confirmReceipt = async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id);
+    const clientId = req.user.id;
+
+    const order = await orderService.getOrderById(id);
+    if (order.clientId !== clientId) {
+      return res.status(403).json({ message: 'No autorizado: esta orden no te pertenece.' });
+    }
+
+    if (order.status !== 'IN_TRANSIT') {
+      return res.status(400).json({ message: 'Solo puedes confirmar pedidos que estén en tránsito.' });
+    }
+
+    const updated = await orderService.updateOrderStatus(id, 'DELIVERED');
+    res.status(200).json({
+      message: 'Pedido marcado como entregado exitosamente.',
+      data: applyOrderDto(updated, req.user.role, req.user.id),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createOrder,
   getMyOrders,
   getAllOrders,
   getOrderById,
   updateOrderStatus,
+  confirmReceipt,
 };
 

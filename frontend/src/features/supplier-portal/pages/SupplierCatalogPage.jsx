@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Search, Grid, List, Edit2, Trash2, Eye, EyeOff, Package, Star } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Plus, Search, Grid, List, Edit2, Trash2, Eye, EyeOff, Package, Star, BarChart2 } from 'lucide-react';
 import { supplierCatalogApi } from '../../../api/api';
-import ProductFormPage from '../components/ProductFormPage';
+import ProductFormModal from '../components/ProductFormModal';
 import '../components/supplier-catalog.css';
 
 const STATUS_COLORS = {
@@ -149,7 +150,7 @@ export default function SupplierCatalogPage() {
                 {/* Body */}
                 <div className="sc-card-body">
                   <div className="sc-card-cat">{p.category}</div>
-                  <div className="sc-card-name" title={p.name}>{p.name}</div>
+                  <Link to={`/proveedor/catalogo/${p.id}`} className="sc-card-name" title={p.name} style={{ textDecoration: 'none' }}>{p.name}</Link>
                   {p.brand && <div className="sc-card-brand">{p.brand}</div>}
                   <div className="sc-card-meta">
                     <span><strong>MOQ:</strong> {p.moq?.toLocaleString()} {p.unit}</span>
@@ -169,6 +170,9 @@ export default function SupplierCatalogPage() {
                 </div>
                 {/* Actions */}
                 <div className="sc-card-actions">
+                  <Link to={`/proveedor/catalogo/${p.id}`} className="sc-action-btn view" title="Ver Detalles" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px', background: 'var(--surface-2)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: '6px', padding: '6px 10px', fontSize: '0.8rem', fontWeight: 600 }}>
+                    <BarChart2 size={14} /> Detalles
+                  </Link>
                   <button className="sc-action-btn edit" title="Editar"
                     onClick={() => { setEditing(p); setModalOpen(true); }}>
                     <Edit2 size={14} /> Editar
@@ -203,7 +207,7 @@ export default function SupplierCatalogPage() {
                 <div className="sc-list-product">
                   <div className="sc-list-thumb">{img ? <img src={img} alt="" /> : <Package size={16} />}</div>
                   <div>
-                    <div className="sc-list-name">{p.name}</div>
+                    <Link to={`/proveedor/catalogo/${p.id}`} className="sc-list-name" style={{ textDecoration: 'none' }}>{p.name}</Link>
                     <div className="sc-list-cat">{p.category} {p.brand && `· ${p.brand}`}</div>
                   </div>
                 </div>
@@ -213,6 +217,7 @@ export default function SupplierCatalogPage() {
                 <span className="sc-list-stock">{p.stock?.toLocaleString()}</span>
                 <span className="sc-list-badge" style={{ background: sc.bg, color: sc.color }}>{sc.label}</span>
                 <div className="sc-list-actions">
+                  <Link to={`/proveedor/catalogo/${p.id}`} title="Ver Detalles" style={{ color: 'var(--text-muted)' }}><BarChart2 size={16} /></Link>
                   <button onClick={() => { setEditing(p); setModalOpen(true); }}><Edit2 size={14} /></button>
                   <button onClick={() => handleToggleStatus(p)}>
                     {p.status === 'ACTIVE' ? <EyeOff size={14} /> : <Eye size={14} />}
@@ -225,9 +230,9 @@ export default function SupplierCatalogPage() {
         </div>
       )}
 
-      {/* ── Full-page Product Form ── */}
+      {/* ── Product Form Modal ── */}
       {modalOpen && (
-        <ProductFormPage
+        <ProductFormModal
           initial={editing}
           onClose={() => { setModalOpen(false); setEditing(null); }}
           onSaved={handleSaved}
