@@ -63,3 +63,13 @@ exports.getProfile = wrap(async (req, res) => {
   res.json({ ok: true, data: supplier });
 });
 
+exports.getOpportunities = wrap(async (req, res) => {
+  const rfqs = await svc.getOpportunities(req.user.id);
+  res.json({ ok: true, data: rfqs });
+});
+
+exports.submitQuote = wrap(async (req, res) => {
+  const quote = await svc.submitQuote(req.user.id, req.params.id, req.body);
+  res.status(201).json({ ok: true, data: quote });
+});
+

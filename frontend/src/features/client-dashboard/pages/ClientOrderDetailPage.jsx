@@ -20,6 +20,7 @@ export default function ClientOrderDetailPage() {
   const [order, setOrder]   = useState(null);
   const [loading,setLoading]= useState(true);
   const [confirmingReceipt, setConfirmingReceipt] = useState(null);
+  const [respondingSample, setRespondingSample] = useState(null);
   const [showReview, setShowReview] = useState(false);
 
   const load = () => clientOrdersApi.getById(id).then(r=>{
@@ -73,8 +74,40 @@ export default function ClientOrderDetailPage() {
             <div style={{fontWeight:700,color:'#92400e',marginBottom:'.3rem'}}>Muestra física lista para revisión</div>
             <p style={{fontSize:'.875rem',color:'#78350f',margin:0}}>El proveedor ha enviado una muestra. Por favor revísala y confirma si aprueba o rechaza antes de continuar con la producción.</p>
             <div className="cd-sample-actions">
-              <button className="cd-btn-primary" style={{gap:'.4rem'}}><CheckCircle size={14}/> Aprobar Muestra</button>
-              <button className="cd-btn-ghost" style={{color:'#dc2626',borderColor:'#fecaca'}}><XCircle size={14}/> Rechazar</button>
+              <button 
+                className="cd-btn-primary" 
+                style={{gap:'.4rem', opacity: respondingSample ? 0.6 : 1}}
+                disabled={!!respondingSample}
+                onClick={async () => {
+                  setRespondingSample('loading');
+                  try {
+                    await clientOrdersApi.respondSample(order.id, 'APPROVED');
+                    load();
+                  } catch (e) {
+                    console.error(e);
+                    setRespondingSample(null);
+                  }
+                }}
+              >
+                {respondingSample === 'loading' ? 'Procesando...' : <><CheckCircle size={14}/> Aprobar Muestra</>}
+              </button>
+              <button 
+                className="cd-btn-ghost" 
+                style={{color:'#dc2626',borderColor:'#fecaca', opacity: respondingSample ? 0.6 : 1}}
+                disabled={!!respondingSample}
+                onClick={async () => {
+                  setRespondingSample('loading');
+                  try {
+                    await clientOrdersApi.respondSample(order.id, 'REJECTED');
+                    load();
+                  } catch (e) {
+                    console.error(e);
+                    setRespondingSample(null);
+                  }
+                }}
+              >
+                <XCircle size={14}/> Rechazar
+              </button>
             </div>
           </div>
         </div>

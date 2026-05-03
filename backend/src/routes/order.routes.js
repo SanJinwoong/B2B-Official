@@ -71,5 +71,14 @@ router.patch(
   orderController.confirmReceipt
 );
 
+// PATCH /api/orders/:id/sample
+// 🔒 Solo CLIENT puede aprobar o rechazar la muestra
+router.patch(
+  '/:id/sample',
+  authenticate,
+  authorize('CLIENT'),
+  orderController.respondSample
+);
+
 module.exports = router;
 

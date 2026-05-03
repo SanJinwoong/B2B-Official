@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import {
   Plus, FileText, DollarSign, Package, Clock,
   ChevronDown, ChevronUp, CheckCircle, Info, AlertCircle, ArrowRight,
+  Upload, X, Image as ImageIcon
 } from 'lucide-react';
 import { rfqApi } from '../../../api/api';
+import { useDropzone } from 'react-dropzone';
 
 /* ── Status definitions ───────────────────────────────────────────────────── */
 const STATUS_MAP = {
@@ -42,7 +44,25 @@ function QuoteCard({ quote, rfqId, onApprove, approving, isApproved, showApprove
 
       {/* Supplier */}
       <div className="rfq-quote-supplier">
-        {quote.supplierName} · {quote.supplierCountry}
+        <div style={{ marginBottom: '.3rem' }}>{quote.supplierName} · {quote.supplierCountry}</div>
+        {quote.supplier && (
+          <div style={{ display: 'flex', gap: '1rem', marginTop: '.25rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '.25rem' }} title="Calificación general de productos">
+              <span style={{ fontSize: '.75rem', color: 'var(--text-muted)' }}>Mkt:</span>
+              <span style={{ fontSize: '.78rem', fontWeight: 600, color: '#f59e0b' }}>
+                ★ {quote.supplier.marketplaceRating?.toFixed(1) || '0.0'}
+              </span>
+              <span style={{ fontSize: '.7rem', color: 'var(--text-muted)' }}>({quote.supplier.marketplaceRatingCount || 0})</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '.25rem' }} title="Calificación como fabricante en cotizaciones">
+              <span style={{ fontSize: '.75rem', color: 'var(--text-muted)' }}>RFQs:</span>
+              <span style={{ fontSize: '.78rem', fontWeight: 600, color: '#f59e0b' }}>
+                ★ {quote.supplier.rfqRating?.toFixed(1) || '0.0'}
+              </span>
+              <span style={{ fontSize: '.7rem', color: 'var(--text-muted)' }}>({quote.supplier.rfqRatingCount || 0})</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Data rows */}
@@ -83,7 +103,6 @@ function RFQBody({ rfq, onApprove, approving }) {
   const handleApprove = () => {
     const target = selectedQuote || rfq.quotes?.[0];
     if (!target) return;
-    if (!confirm('¿Confirmas aprobar esta cotización y convertirla en pedido?')) return;
     onApprove(rfq.id, target.id);
   };
 
@@ -105,6 +124,27 @@ function RFQBody({ rfq, onApprove, approving }) {
           <div>
             <div className="rfq-info-label">ACTUALIZADO</div>
             <div className="rfq-info-value">{fmtShort(rfq.updatedAt)}</div>
+          </div>
+        </div>
+      )}
+
+      {/* Attached Images */}
+      {rfq.images && rfq.images !== '[]' && (
+        <div className="rfq-images-display">
+          <div className="rfq-info-label" style={{ marginTop: '1rem', marginBottom: '0.5rem' }}>PLANOS / IMÁGENES DE REFERENCIA</div>
+          <div className="rfq-image-preview-wrap" style={{ marginTop: 0 }}>
+            {(() => {
+              try {
+                const parsed = JSON.parse(rfq.images);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                  return parsed.map((img, i) => (
+                    <a key={i} href={img} target="_blank" rel="noreferrer" className="rfq-image-preview" style={{ cursor: 'zoom-in' }}>
+                      <img src={img} alt={`Referencia ${i+1}`} />
+                    </a>
+                  ));
+                }
+              } catch (e) { return null; }
+            })()}
           </div>
         </div>
       )}
@@ -202,10 +242,34 @@ export default function ClientRFQsPage() {
   const [open,      setOpen]      = useState({});
   const [showModal, setShowModal] = useState(false);
   const [form,      setForm]      = useState({
-    title: '', description: '', quantity: '', unit: 'piezas', budget: '', deadline: '',
+    title: '', description: '', quantity: '', unit: 'piezas', budget: '', deadline: '', category: 'general', images: []
   });
   const [saving,    setSaving]    = useState(false);
   const [approving, setApproving] = useState(null);
+  const [toast,     setToast]     = useState({ show: false, message: '', type: 'success' });
+  const [confirmApprove, setConfirmApprove] = useState(null);
+
+  const showToast = (message, type = 'success') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 4000);
+  };
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    accept: { 'image/*': [], 'application/pdf': [] },
+    onDrop: (acceptedFiles) => {
+      acceptedFiles.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          setForm(p => ({ ...p, images: [...(p.images || []), reader.result] }));
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+  });
+
+  const removeImage = (index) => {
+    setForm(p => ({ ...p, images: p.images.filter((_, i) => i !== index) }));
+  };
 
   const load = () =>
     rfqApi.getMyRFQs()
@@ -231,16 +295,28 @@ export default function ClientRFQsPage() {
     try {
       await rfqApi.create({ ...form, quantity: Number(form.quantity) });
       setShowModal(false);
-      setForm({ title: '', description: '', quantity: '', unit: 'piezas', budget: '', deadline: '' });
+      showToast("Solicitud de cotización creada exitosamente");
+      setForm({ title: '', description: '', quantity: '', unit: 'piezas', budget: '', deadline: '', category: 'general', images: [] });
       load();
-    } catch (err) { alert(err.response?.data?.message || 'Error al crear la solicitud'); }
+    } catch (err) { showToast(err.response?.data?.message || 'Error al crear la solicitud', 'error'); }
     finally { setSaving(false); }
   };
 
-  const handleApprove = async (rfqId, quoteId) => {
+  const handleApproveRequest = (rfqId, quoteId) => {
+    setConfirmApprove({ rfqId, quoteId });
+  };
+
+  const handleApproveConfirm = async () => {
+    if (!confirmApprove) return;
+    const { rfqId, quoteId } = confirmApprove;
+    setConfirmApprove(null);
     setApproving(quoteId);
-    try { await rfqApi.approveQuote(rfqId, quoteId); load(); }
-    catch (err) { alert(err.response?.data?.message || 'Error al aprobar'); }
+    try { 
+      await rfqApi.approveQuote(rfqId, quoteId); 
+      showToast("Cotización aprobada. Pedido generado exitosamente.");
+      load(); 
+    }
+    catch (err) { showToast(err.response?.data?.message || 'Error al aprobar la cotización', 'error'); }
     finally { setApproving(null); }
   };
 
@@ -340,13 +416,48 @@ export default function ClientRFQsPage() {
             {isOpen && (
               <RFQBody
                 rfq={rfq}
-                onApprove={handleApprove}
+                onApprove={handleApproveRequest}
                 approving={approving}
               />
             )}
           </div>
         );
       })}
+
+      {/* ── Toast Notification ── */}
+      {toast.show && (
+        <div style={{
+          position: 'fixed', bottom: 32, left: '50%', transform: 'translateX(-50%)',
+          background: toast.type === 'error' ? 'var(--error)' : '#10b981', color: '#fff',
+          padding: '12px 24px', borderRadius: '50px', display: 'flex', alignItems: 'center', gap: 10,
+          fontSize: '.9rem', fontWeight: 600, zIndex: 3000, boxShadow: '0 8px 24px rgba(0,0,0,.3)',
+          animation: 'sp-toast-in 0.3s ease'
+        }}>
+          {toast.type === 'success' ? <CheckCircle size={18} /> : <AlertCircle size={18} />}
+          {toast.message}
+        </div>
+      )}
+
+      {/* ── Confirm Approve Modal ── */}
+      {confirmApprove && (
+        <div className="rfq-modal-overlay" onClick={() => setConfirmApprove(null)}>
+          <div className="rfq-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+            <div className="rfq-modal-header">
+              <div>
+                <h2 className="rfq-modal-title">Confirmar Aprobación</h2>
+              </div>
+              <button className="rfq-modal-close" onClick={() => setConfirmApprove(null)}>✕</button>
+            </div>
+            <div className="rfq-modal-body" style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text)' }}>
+              ¿Estás seguro de que deseas aprobar esta cotización y generar un pedido formal?
+            </div>
+            <div className="rfq-modal-footer">
+              <button type="button" className="rfq-cancel-btn" onClick={() => setConfirmApprove(null)}>Cancelar</button>
+              <button type="button" className="rfq-cancel-btn" style={{ borderColor: 'var(--primary)', color: 'var(--primary)' }} onClick={handleApproveConfirm}>Confirmar Pedido</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── New RFQ modal ── */}
       {showModal && (
@@ -439,6 +550,53 @@ export default function ClientRFQsPage() {
                       onChange={e => setForm(p => ({ ...p, deadline: e.target.value }))}
                     />
                   </div>
+                </div>
+
+                {/* Categoría */}
+                <div className="rfq-field">
+                  <label className="rfq-label">Categoría del Producto *</label>
+                  <select
+                    className="rfq-input rfq-select"
+                    value={form.category}
+                    onChange={e => setForm(p => ({ ...p, category: e.target.value }))}
+                  >
+                    {['general', 'empaques', 'manufactura', 'alimentos', 'textiles', 'logistica', 'quimicos', 'otros'].map(c => (
+                      <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Adjuntar Imágenes / Planos */}
+                <div className="rfq-field">
+                  <label className="rfq-label">Planos o Imágenes de Referencia</label>
+                  <div 
+                    {...getRootProps()} 
+                    className={`rfq-dropzone ${isDragActive ? 'active' : ''}`}
+                  >
+                    <input {...getInputProps()} />
+                    <Upload size={24} className="rfq-dropzone-icon" />
+                    <p className="rfq-dropzone-text">
+                      {isDragActive ? "Suelta los archivos aquí..." : "Arrastra tus archivos aquí o haz clic para subir"}
+                    </p>
+                  </div>
+                  
+                  {/* Vista previa de imágenes */}
+                  {form.images && form.images.length > 0 && (
+                    <div className="rfq-image-preview-wrap">
+                      {form.images.map((img, i) => (
+                        <div key={i} className="rfq-image-preview">
+                          <img src={img} alt="preview" />
+                          <button 
+                            type="button"
+                            className="rfq-image-preview-btn"
+                            onClick={(e) => { e.stopPropagation(); removeImage(i); }}
+                          >
+                            <X size={10} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
               </div>

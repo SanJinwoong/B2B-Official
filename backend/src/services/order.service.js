@@ -216,10 +216,45 @@ const updateOrderStatus = async (id, status) => {
   });
 };
 
+const respondSample = async (clientId, orderId, status) => {
+  if (!['APPROVED', 'REJECTED'].includes(status)) {
+    throw Object.assign(new Error('Status de muestra inválido.'), { statusCode: 400 });
+  }
+
+  const order = await prisma.order.findUnique({
+    where: { id: Number(orderId) },
+  });
+
+  if (!order || order.clientId !== clientId) {
+    throw Object.assign(new Error('Pedido no encontrado.'), { statusCode: 404 });
+  }
+
+  if (order.sampleStatus !== 'PENDING') {
+    throw Object.assign(new Error('La muestra ya fue procesada.'), { statusCode: 400 });
+  }
+
+  return prisma.order.update({
+    where: { id: Number(orderId) },
+    data: { sampleStatus: status },
+    include: {
+      client: true,
+      supplier: true,
+      orderItems: {
+        include: { product: true },
+      },
+      phases: true,
+      documents: true,
+      payments: true,
+      rfq: true,
+    },
+  });
+};
+
 module.exports = {
   createOrder,
   getMyOrders,
   getAllOrders,
   getOrderById,
   updateOrderStatus,
+  respondSample,
 };

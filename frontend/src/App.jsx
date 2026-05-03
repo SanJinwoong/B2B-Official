@@ -37,6 +37,7 @@ import SupplierCatalogPage    from './features/supplier-portal/pages/SupplierCat
 import SupplierOrdersPage     from './features/supplier-portal/pages/SupplierOrdersPage';
 import SupplierPerformancePage from './features/supplier-portal/pages/SupplierPerformancePage';
 import SupplierSettingsPage    from './features/supplier-portal/pages/SupplierSettingsPage';
+import SupplierOpportunitiesPage from './features/supplier-portal/pages/SupplierOpportunitiesPage';
 
 const App = () => {
   return (
@@ -176,7 +177,7 @@ const App = () => {
           >
             <Route index             element={<Navigate to="/proveedor/dashboard" replace />} />
             <Route path="dashboard"  element={<SupplierDashboardPage />} />
-            <Route path="rfqs"       element={<SupplierDashboardPage />} />
+            <Route path="rfqs"       element={<SupplierOpportunitiesPage />} />
             <Route path="pedidos"    element={<SupplierOrdersPage />} />
             <Route path="catalogo"   element={<SupplierCatalogPage />} />
             <Route path="catalogo/:id" element={<ProductDetailPage />} />

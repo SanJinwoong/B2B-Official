@@ -51,7 +51,7 @@
   justify-content: space-between;
   padding: 14px 16px;
   border-bottom: 1px solid var(--border);
-  background: #f8fafc;
+  background: var(--surface-2);
 }
 
 .notif-header h4 {
@@ -93,7 +93,7 @@
   border-bottom: 1px solid var(--border);
   cursor: pointer;
   transition: background 0.2s;
-  background: #eff6ff; /* slightly highlighted since it's unread */
+  background: rgba(37, 99, 235, 0.08); /* slightly highlighted since it's unread */
 }
 
 .notif-item:last-child {
@@ -101,7 +101,7 @@
 }
 
 .notif-item:hover {
-  background: #e0f2fe;
+  background: rgba(37, 99, 235, 0.15);
 }
 
 .notif-item-content h5 {

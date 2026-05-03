@@ -64,6 +64,7 @@ model User {
 
   notifications     Notification[] @relation("UserNotifications")
   rfqRatings        RFQRating[]    @relation("SupplierRFQRatings")
+  rfqQuotes         RFQQuote[]     @relation("SupplierQuotes")
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -366,6 +367,8 @@ model RFQ {
   description String?           // Especificaciones detalladas
   quantity    Int
   unit        String   @default("piezas")
+  category    String   @default("general")
+  images      String   @default("[]") // JSON array de URLs/base64
 
   // PENDING | SEARCHING | QUOTED | APPROVED | EXPIRED
   status      String   @default("PENDING")
@@ -391,6 +394,9 @@ model RFQQuote {
   label           String            // "Opción A", "Opción B"
   supplierName    String
   supplierCountry String   @default("")
+
+  supplierId      Int?
+  supplier        User?    @relation("SupplierQuotes", fields: [supplierId], references: [id], onDelete: SetNull)
 
   unitPrice       Float
   totalPrice      Float

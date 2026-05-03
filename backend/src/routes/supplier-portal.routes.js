@@ -22,5 +22,9 @@ router.delete('/catalog/:id',          ...supplier, ctrl.deleteProduct);
 // Perfil público del proveedor (visible para clientes)
 router.get   ('/profile',              ...supplier, ctrl.getProfile);
 
+// Oportunidades (RFQs)
+router.get   ('/rfqs',                 ...supplier, ctrl.getOpportunities);
+router.post  ('/rfqs/:id/quotes',      ...supplier, ctrl.submitQuote);
+
 module.exports = router;
 

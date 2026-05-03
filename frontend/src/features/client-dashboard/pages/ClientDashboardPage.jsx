@@ -106,10 +106,10 @@ export default function ClientDashboardPage() {
       {/* ── Header row ── */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
         <div>
-          <h1 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#0f172a', letterSpacing: '-.02em' }}>
+          <h1 style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text)', letterSpacing: '-.02em' }}>
             {getGreeting(user?.name)}
           </h1>
-          <p style={{ fontSize: '.9rem', color: '#64748b', marginTop: '.2rem' }}>
+          <p style={{ fontSize: '.9rem', color: 'var(--text-muted)', marginTop: '.2rem' }}>
             Aquí tienes un resumen de tu cuenta.
           </p>
         </div>
@@ -162,7 +162,7 @@ export default function ClientDashboardPage() {
         {/* LEFT: Seguimiento de Pedidos */}
         <div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-            <h2 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>Seguimiento de Pedidos</h2>
+            <h2 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text)' }}>Seguimiento de Pedidos</h2>
             <Link to="/client/orders" style={{ display: 'flex', alignItems: 'center', gap: '.2rem', color: '#2563eb', fontSize: '.82rem', fontWeight: 600, textDecoration: 'none' }}>
               Ver todos <ChevronRight size={13} />
             </Link>
@@ -213,12 +213,12 @@ export default function ClientDashboardPage() {
           {/* Cotizaciones Listas */}
           <div className="cd-dash-sidebar-card">
             <div className="cd-dash-sidebar-head">
-              <span style={{ fontSize: '.95rem', fontWeight: 700, color: '#0f172a' }}>Cotizaciones Listas</span>
+              <span style={{ fontSize: '.95rem', fontWeight: 700, color: 'var(--text)' }}>Cotizaciones Listas</span>
               {readyRFQs.length > 0 && <span className="cd-dash-badge-count">{readyRFQs.length}</span>}
             </div>
-            {loading && <p style={{ color: '#94a3b8', fontSize: '.82rem', padding: '.5rem 0' }}>Cargando...</p>}
+            {loading && <p style={{ color: 'var(--text-muted)', fontSize: '.82rem', padding: '.5rem 0' }}>Cargando...</p>}
             {!loading && readyRFQs.length === 0 && (
-              <p style={{ color: '#94a3b8', fontSize: '.82rem', padding: '.5rem 0' }}>No hay cotizaciones pendientes.</p>
+              <p style={{ color: 'var(--text-muted)', fontSize: '.82rem', padding: '.5rem 0' }}>No hay cotizaciones pendientes.</p>
             )}
             {readyRFQs.map(rfq => (
               <Link key={rfq.id} to="/client/rfqs" className="cd-dash-rfq-row">
@@ -238,7 +238,7 @@ export default function ClientDashboardPage() {
           {/* Acciones Rápidas */}
           <div className="cd-dash-sidebar-card">
             <div className="cd-dash-sidebar-head">
-              <span style={{ fontSize: '.95rem', fontWeight: 700, color: '#0f172a' }}>Acciones Rápidas</span>
+              <span style={{ fontSize: '.95rem', fontWeight: 700, color: 'var(--text)' }}>Acciones Rápidas</span>
             </div>
             {[
               { icon: <Plus size={15} style={{ color: '#2563eb' }} />, label: 'Crear Nueva Solicitud de Pedido', to: '/client/rfqs' },

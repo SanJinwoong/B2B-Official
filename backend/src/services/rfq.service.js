@@ -30,11 +30,48 @@ const DEFAULT_PHASES = [
 /**
  * Crea una nueva solicitud de cotización (RFQ) para el cliente autenticado.
  */
-const createRFQ = async (clientId, { title, description, quantity, unit }) => {
+const createRFQ = async (clientId, { title, description, quantity, unit, category, images }) => {
   const rfqNumber = await generateRFQNumber();
-  return prisma.rFQ.create({
-    data: { rfqNumber, clientId, title, description, quantity, unit: unit || 'piezas' },
+  
+  const rfq = await prisma.rFQ.create({
+    data: { 
+      rfqNumber, 
+      clientId, 
+      title, 
+      description, 
+      quantity: Number(quantity), 
+      unit: unit || 'piezas',
+      category: category || 'general',
+      images: images ? JSON.stringify(images) : "[]"
+    },
   });
+
+  // Broadcasting a todos los proveedores de la categoría relacionada
+  const targetCategory = category || 'general';
+  
+  // Encontramos proveedores aprobados cuya aplicación tenga esa categoría
+  // Alternativamente, podríamos buscar a todos los usuarios con rol SUPPLIER
+  const applications = await prisma.supplierApplication.findMany({
+    where: { status: 'APPROVED', category: targetCategory },
+    select: { approvedUserId: true }
+  });
+
+  const supplierIds = applications
+    .map(app => app.approvedUserId)
+    .filter(id => id !== null);
+    
+  if (supplierIds.length > 0) {
+    const notifications = supplierIds.map(userId => ({
+      userId,
+      type: 'RFQ_NEW',
+      title: 'Nueva Solicitud de Cotización (RFQ)',
+      message: `Un cliente busca ${quantity} ${unit || 'piezas'} de ${title} en tu categoría.`,
+      link: `/supplier/rfqs/${rfq.id}`
+    }));
+    await prisma.notification.createMany({ data: notifications });
+  }
+
+  return rfq;
 };
 
 /**
@@ -43,7 +80,22 @@ const createRFQ = async (clientId, { title, description, quantity, unit }) => {
 const getMyRFQs = async (clientId) => {
   return prisma.rFQ.findMany({
     where: { clientId },
-    include: { quotes: { orderBy: { id: 'asc' } } },
+    include: {
+      quotes: {
+        orderBy: { id: 'asc' },
+        include: {
+          supplier: {
+            select: {
+              id: true,
+              marketplaceRating: true,
+              marketplaceRatingCount: true,
+              rfqRating: true,
+              rfqRatingCount: true
+            }
+          }
+        }
+      }
+    },
     orderBy: { createdAt: 'desc' },
   });
 };
@@ -79,8 +131,9 @@ const approveQuote = async (rfqId, quoteId, clientId) => {
     const e = new Error('Cotización no encontrada.'); e.statusCode = 404; throw e;
   }
 
+  const orderNumber = await generateOrderNumber();
+
   return prisma.$transaction(async (tx) => {
-    const orderNumber = await generateOrderNumber();
 
     // Depósito 50% y saldo 50%
     const deposit = parseFloat((quote.totalPrice * 0.5).toFixed(2));
@@ -93,10 +146,11 @@ const approveQuote = async (rfqId, quoteId, clientId) => {
       data: {
         orderNumber,
         clientId,
+        supplierId: quote.supplierId,
         status: 'IN_PRODUCTION',
         totalAmount:    quote.totalPrice,
         clientAmount:   quote.totalPrice,
-        supplierAmount: 0,
+        supplierAmount: quote.totalPrice,
         sampleStatus: 'PENDING',
         // Fases
         phases: {
@@ -120,12 +174,45 @@ const approveQuote = async (rfqId, quoteId, clientId) => {
     await tx.rFQQuote.update({ where: { id: quoteId }, data: { isApproved: true } });
 
     // Actualizar RFQ → APPROVED + link al pedido
-    await tx.rFQ.update({
+    const updatedRfq = await tx.rFQ.update({
       where: { id: rfqId },
       data: { status: 'APPROVED', orderId: order.id },
+      include: { quotes: true }
     });
 
+    // Notify winner and losers
+    const notifications = [];
+    for (const q of updatedRfq.quotes) {
+      if (!q.supplierId) continue;
+      if (q.id === quoteId) {
+        // Winner
+        notifications.push({
+          userId: q.supplierId,
+          type: 'RFQ_WON',
+          title: '¡Propuesta Aceptada!',
+          message: `Tu cotización para "${updatedRfq.title}" ha sido aprobada. Tienes un nuevo pedido.`,
+          link: `/supplier/orders/${order.id}`
+        });
+      } else {
+        // Loser
+        notifications.push({
+          userId: q.supplierId,
+          type: 'RFQ_LOST',
+          title: 'Cotización Cerrada',
+          message: `El cliente ha seleccionado otra opción para "${updatedRfq.title}". ¡Gracias por participar!`,
+          link: `/supplier/rfqs/${rfqId}`
+        });
+      }
+    }
+    
+    if (notifications.length > 0) {
+      await tx.notification.createMany({ data: notifications });
+    }
+
     return order;
+  }, {
+    maxWait: 15000,
+    timeout: 30000
   });
 };
 

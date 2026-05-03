@@ -133,6 +133,23 @@ const confirmReceipt = async (req, res, next) => {
   }
 };
 
+const respondSample = async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { status } = req.body;
+    const clientId = req.user.id;
+
+    const order = await orderService.respondSample(clientId, id, status);
+    
+    res.status(200).json({
+      message: `Muestra física ${status === 'APPROVED' ? 'aprobada' : 'rechazada'} exitosamente.`,
+      data: applyOrderDto(order, req.user.role, req.user.id),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createOrder,
   getMyOrders,
@@ -140,5 +157,6 @@ module.exports = {
   getOrderById,
   updateOrderStatus,
   confirmReceipt,
+  respondSample,
 };
 

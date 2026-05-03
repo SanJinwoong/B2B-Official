@@ -99,6 +99,7 @@ const getMyOrders = async (supplierId, { status } = {}) => {
       phases: true,
       payments: { select: { status: true, amount: true, type: true } },
       orderItems: { include: { product: { include: { images: true } } } },
+      rfq: true,
     },
     orderBy: { createdAt: 'desc' },
   });
@@ -108,26 +109,40 @@ const getMyOrders = async (supplierId, { status } = {}) => {
     clientIds.map((id, i) => [id, anonClient(i)])
   );
 
-  return orders.map((o) => ({
-    id: o.id,
-    orderNumber: o.orderNumber,
-    status: o.status,
-    supplierAmount: o.supplierAmount,
-    deliveryDate: o.deliveryDate,
-    sampleStatus: o.sampleStatus,
-    clientAlias: clientAliasMap[o.client.id],
-    phases: o.phases,
-    paidAmount: o.payments
-      .filter((p) => p.status === 'PAID')
-      .reduce((s, p) => s + p.amount, 0),
-    isOverdue: o.deliveryDate ? new Date(o.deliveryDate) < new Date() && o.status !== 'DELIVERED' : false,
-    createdAt: o.createdAt,
-    items: o.orderItems.map(i => ({
+  return orders.map((o) => {
+    let itemsMapped = o.orderItems.map(i => ({
       productName: i.product.name,
       quantity: i.quantity,
       image: i.product.images?.find(img => img.isPrimary)?.url || i.product.images?.[0]?.url || null
-    })),
-  }));
+    }));
+
+    if (itemsMapped.length === 0 && o.rfq) {
+      let rfqImages = [];
+      try { rfqImages = JSON.parse(o.rfq.images); } catch(e){}
+      itemsMapped = [{
+        productName: o.rfq.title,
+        quantity: o.rfq.quantity,
+        image: Array.isArray(rfqImages) && rfqImages.length > 0 ? rfqImages[0] : null
+      }];
+    }
+
+    return {
+      id: o.id,
+      orderNumber: o.orderNumber,
+      status: o.status,
+      supplierAmount: o.supplierAmount,
+      deliveryDate: o.deliveryDate,
+      sampleStatus: o.sampleStatus,
+      clientAlias: clientAliasMap[o.client.id],
+      phases: o.phases,
+      paidAmount: o.payments
+        .filter((p) => p.status === 'PAID')
+        .reduce((s, p) => s + p.amount, 0),
+      isOverdue: o.deliveryDate ? new Date(o.deliveryDate) < new Date() && o.status !== 'DELIVERED' : false,
+      createdAt: o.createdAt,
+      items: itemsMapped,
+    };
+  });
 };
 
 // ── Actualizar estado de pedido (transiciones permitidas para proveedor) ───────
@@ -312,5 +327,94 @@ const deleteProduct = async (supplierId, productId) => {
   return prisma.product.delete({ where: { id: Number(productId) } });
 };
 
-module.exports = { getDashboard, getMyOrders, updateOrderStatus, getCatalog, createProduct, updateProduct, deleteProduct };
+// ── Oportunidades (RFQs) ──────────────────────────────────────────────────────
+const getOpportunities = async (supplierId) => {
+  const supplierApp = await prisma.supplierApplication.findUnique({
+    where: { approvedUserId: supplierId }
+  });
+  if (!supplierApp) return [];
+
+  const allRfqs = await prisma.rFQ.findMany({
+    where: {
+      status: { in: ['PENDING', 'SEARCHING', 'QUOTED'] },
+      quotes: { none: { supplierId } }
+    },
+    include: { client: { select: { id: true } } },
+    orderBy: { createdAt: 'desc' }
+  });
+
+  const normalize = (str) => str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim() : '';
+  const supplierCats = supplierApp.category ? supplierApp.category.split(',').map(normalize) : [];
+
+  const rfqs = allRfqs.filter(rfq => {
+    if (!rfq.category) return false;
+    const rfqCat = normalize(rfq.category);
+    if (rfqCat === 'general' || rfqCat === 'otros') return true;
+    return supplierCats.some(c => c.includes(rfqCat) || rfqCat.includes(c));
+  });
+
+  const clientIds = [...new Set(rfqs.map((o) => o.client.id))];
+  const clientAliasMap = Object.fromEntries(clientIds.map((id, i) => [id, anonClient(i)]));
+
+  const parseJSON = (str, fallback) => { try { return JSON.parse(str); } catch { return fallback; } };
+
+  return rfqs.map(rfq => ({
+    ...rfq,
+    images: parseJSON(rfq.images, []),
+    clientAlias: clientAliasMap[rfq.client.id]
+  }));
+};
+
+const submitQuote = async (supplierId, rfqId, quoteData) => {
+  const rfq = await prisma.rFQ.findUnique({ where: { id: Number(rfqId) } });
+  if (!rfq || !['PENDING', 'SEARCHING', 'QUOTED'].includes(rfq.status)) {
+    throw Object.assign(new Error('RFQ no disponible para cotizar.'), { statusCode: 400 });
+  }
+
+  const existingQuote = await prisma.rFQQuote.findFirst({
+    where: { rfqId: Number(rfqId), supplierId }
+  });
+  if (existingQuote) {
+    throw Object.assign(new Error('Ya enviaste una cotización para esta solicitud.'), { statusCode: 400 });
+  }
+
+  const supplierApp = await prisma.supplierApplication.findUnique({
+    where: { approvedUserId: supplierId }
+  });
+
+  const [quote] = await prisma.$transaction([
+    prisma.rFQQuote.create({
+      data: {
+        rfqId: Number(rfqId),
+        supplierId,
+        supplierName: supplierApp?.companyName || 'Proveedor',
+        supplierCountry: supplierApp?.country || 'MX',
+        label: `Opción de ${supplierApp?.companyName || 'Proveedor'}`,
+        unitPrice: parseFloat(quoteData.unitPrice),
+        totalPrice: parseFloat(quoteData.totalPrice),
+        deliveryDays: parseInt(quoteData.deliveryDays),
+        moq: parseInt(quoteData.moq),
+        notes: quoteData.notes || null,
+        validUntil: quoteData.validUntil ? new Date(quoteData.validUntil) : null
+      }
+    }),
+    prisma.rFQ.update({
+      where: { id: Number(rfqId) },
+      data: { status: 'QUOTED' }
+    })
+  ]);
+
+  const { notifyUser } = require('./notification.service');
+  await notifyUser(
+    rfq.clientId,
+    'RFQ_QUOTED',
+    'Nueva propuesta recibida',
+    `Un proveedor ha enviado una propuesta para tu solicitud ${rfq.rfqNumber}.`,
+    '/client/rfqs'
+  );
+
+  return quote;
+};
+
+module.exports = { getDashboard, getMyOrders, updateOrderStatus, getCatalog, createProduct, updateProduct, deleteProduct, getOpportunities, submitQuote };
 

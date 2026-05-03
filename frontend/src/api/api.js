@@ -164,6 +164,7 @@ export const clientOrdersApi = {
   getMy:    ()   => api.get('/orders/my'),
   getById:  (id) => api.get(`/orders/${id}`),
   confirmReceipt: (id) => api.patch(`/orders/${id}/confirm-receipt`),
+  respondSample:  (id, status) => api.patch(`/orders/${id}/sample`, { status }),
 };
 
 // ─── Notificaciones ────────────────────────────────────────────────────────────
@@ -218,6 +219,11 @@ export const supplierCatalogApi = {
 export const supplierOrdersApi = {
   getOrders:    ()           => api.get('/supplier/orders'),
   updateStatus: (id, status) => api.patch(`/supplier/orders/${id}/status`, { status }),
+};
+
+export const supplierOpportunitiesApi = {
+  getOpportunities: ()         => api.get('/supplier/rfqs'),
+  submitQuote:      (id, data) => api.post(`/supplier/rfqs/${id}/quotes`, data),
 };
 
 export default api;
