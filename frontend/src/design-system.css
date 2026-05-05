@@ -4,7 +4,7 @@
    Clases dark activas cuando <html class="dark">
    ═══════════════════════════════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Montserrat:wght@600;700;800&display=swap');
 
 /* ── Tokens Light (default) ─────────────────────────────────────────────── */
 :root {
@@ -68,6 +68,7 @@
 
   /* Fuente */
   --font: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-btn: 'Montserrat', sans-serif;
 }
 
 /* ── Tokens Dark — NEUTRO (sin morado) ──────────────────────────────────── */
@@ -409,7 +410,7 @@ body {
   font-size: 0.82rem; font-weight: 600;
   cursor: pointer;
   transition: background var(--trans);
-  font-family: var(--font);
+  font-family: var(--font-btn);
 }
 .dv-download-btn:hover:not(:disabled) { background: var(--accent-hover); }
 .dv-download-btn:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -589,7 +590,7 @@ body {
   font-size: 0.9rem; font-weight: 700;
   text-decoration: none;
   transition: background var(--trans);
-  font-family: var(--font);
+  font-family: var(--font-btn);
 }
 .rs-btn-primary:hover { background: var(--accent-hover); }
 .rs-btn-ghost {
@@ -602,7 +603,7 @@ body {
   font-size: 0.88rem; font-weight: 600;
   cursor: pointer;
   transition: all var(--trans);
-  font-family: var(--font);
+  font-family: var(--font-btn);
 }
 .rs-btn-ghost:hover { background: var(--surface-2); color: var(--text); }
 
@@ -670,7 +671,7 @@ body {
   font-size: 0.9rem; font-weight: 700;
   cursor: pointer;
   transition: background var(--trans);
-  font-family: var(--font);
+  font-family: var(--font-btn);
 }
 .cs-search-btn:hover:not(:disabled) { background: var(--accent-hover); }
 .cs-search-btn:disabled { opacity: 0.55; cursor: not-allowed; }
@@ -868,6 +869,7 @@ body {
   font-size: 0.84rem; font-weight: 700;
   text-decoration: none;
   transition: background var(--trans);
+  font-family: var(--font-btn);
 }
 .nb-login-btn:hover { background: var(--accent-hover); }
 

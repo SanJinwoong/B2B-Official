@@ -80,5 +80,23 @@ router.patch(
   orderController.respondSample
 );
 
+// GET /api/orders/:id/messages
+// 🔒 Para CLIENT y SUPPLIER (y ADMIN)
+router.get(
+  '/:id/messages',
+  authenticate,
+  authorize('CLIENT', 'SUPPLIER', 'ADMIN'),
+  orderController.getOrderMessages
+);
+
+// POST /api/orders/:id/messages
+// 🔒 Para CLIENT y SUPPLIER (y ADMIN)
+router.post(
+  '/:id/messages',
+  authenticate,
+  authorize('CLIENT', 'SUPPLIER', 'ADMIN'),
+  orderController.sendOrderMessage
+);
+
 module.exports = router;
 

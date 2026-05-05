@@ -30,7 +30,7 @@ const DEFAULT_PHASES = [
 /**
  * Crea una nueva solicitud de cotización (RFQ) para el cliente autenticado.
  */
-const createRFQ = async (clientId, { title, description, quantity, unit, category, images }) => {
+const createRFQ = async (clientId, { title, description, quantity, unit, category, budget, isNegotiable, deadline, images }) => {
   const rfqNumber = await generateRFQNumber();
   
   const rfq = await prisma.rFQ.create({
@@ -42,6 +42,9 @@ const createRFQ = async (clientId, { title, description, quantity, unit, categor
       quantity: Number(quantity), 
       unit: unit || 'piezas',
       category: category || 'general',
+      budget: budget ? parseFloat(budget) : null,
+      isNegotiable: isNegotiable !== undefined ? isNegotiable : true,
+      deadline: deadline ? new Date(deadline) : null,
       images: images ? JSON.stringify(images) : "[]"
     },
   });

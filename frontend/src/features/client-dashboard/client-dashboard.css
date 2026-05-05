@@ -55,11 +55,11 @@
 .cd-search{flex:1;min-width:200px;max-width:320px;padding:.55rem .85rem;border:1px solid #e2e8f0;border-radius:8px;font-size:.875rem;background:#fff;color:#0f172a;outline:none}
 .cd-search:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.1)}
 .cd-filter-pills{display:flex;gap:.5rem;flex-wrap:wrap}
-.cd-pill{padding:.4rem .9rem;border-radius:99px;font-size:.8rem;font-weight:600;border:1px solid #e2e8f0;background:#fff;color:#64748b;cursor:pointer;transition:all .15s}
+.cd-pill{padding:.4rem .9rem;border-radius:99px;font-size:.8rem;font-weight:700;border:1px solid #e2e8f0;background:#fff;color:#64748b;cursor:pointer;transition:all .15s;font-family:var(--font-btn)}
 .cd-pill.active{background:#2563eb;border-color:#2563eb;color:#fff}
 .cd-pill:hover:not(.active){border-color:#93c5fd;color:#2563eb}
 /* Btn primary */
-.cd-btn-primary{display:inline-flex;align-items:center;gap:.5rem;padding:.6rem 1.2rem;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:.875rem;font-weight:700;cursor:pointer;text-decoration:none;transition:background .15s}
+.cd-btn-primary{display:inline-flex;align-items:center;gap:.5rem;padding:.6rem 1.2rem;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:.875rem;font-weight:800;cursor:pointer;text-decoration:none;transition:background .15s;font-family:var(--font-btn);letter-spacing:-0.01em;}
 .cd-btn-primary:hover{background:#1d4ed8}
 .cd-btn-danger{background:#dc2626}.cd-btn-danger:hover{background:#b91c1c}
 .cd-btn-ghost{display:inline-flex;align-items:center;gap:.5rem;padding:.55rem 1rem;background:#fff;color:#374151;border:1px solid #e2e8f0;border-radius:8px;font-size:.875rem;font-weight:600;cursor:pointer;transition:all .15s}
@@ -177,6 +177,7 @@
 .cd-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:200;padding:1rem}
 .cd-modal{background:#fff;border-radius:14px;width:100%;max-width:500px;box-shadow:0 20px 40px rgba(0,0,0,.15);animation:cd-slide .18s ease}
 @keyframes cd-slide{from{transform:translateY(12px);opacity:0}to{transform:none;opacity:1}}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.4)}}
 .cd-modal-header{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.5rem;border-bottom:1px solid #e2e8f0}
 .cd-modal-title{font-size:1.05rem;font-weight:700;color:#0f172a}
 .cd-modal-body{padding:1.5rem}

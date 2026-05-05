@@ -150,6 +150,40 @@ const respondSample = async (req, res, next) => {
   }
 };
 
+const getOrderMessages = async (req, res, next) => {
+  try {
+    const orderId = parseInt(req.params.id);
+    const userId = req.user.id;
+    const userRole = req.user.role;
+    
+    const messages = await orderService.getOrderMessages(orderId, userId, userRole);
+    res.status(200).json({ data: messages });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const sendOrderMessage = async (req, res, next) => {
+  try {
+    const orderId = parseInt(req.params.id);
+    const senderId = req.user.id;
+    const senderRole = req.user.role;
+    const { content } = req.body;
+    
+    if (!content || !content.trim()) {
+      return res.status(400).json({ message: 'El contenido del mensaje es requerido.' });
+    }
+    
+    const message = await orderService.sendOrderMessage(orderId, senderId, senderRole, content);
+    res.status(201).json({
+      message: 'Mensaje enviado.',
+      data: message
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createOrder,
   getMyOrders,
@@ -158,5 +192,7 @@ module.exports = {
   updateOrderStatus,
   confirmReceipt,
   respondSample,
+  getOrderMessages,
+  sendOrderMessage,
 };
 

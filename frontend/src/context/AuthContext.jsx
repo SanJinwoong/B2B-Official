@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback } from 'react';
+import { meApi } from '../api/api';
 
 // ─── AuthContext ──────────────────────────────────────────────────────────────
 // Provee el estado de autenticación a toda la app.
@@ -46,10 +47,29 @@ export const AuthProvider = ({ children }) => {
     });
   }, []);
 
+  /**
+   * Recarga los datos del usuario desde el backend y actualiza el contexto.
+   */
+  const refreshUser = useCallback(async () => {
+    if (!localStorage.getItem('token')) return;
+    try {
+      const res = await meApi.get();
+      const fresh = res.data?.data;
+      if (fresh) {
+        const stored = JSON.parse(localStorage.getItem('user') || '{}');
+        const merged = { ...stored, ...fresh };
+        localStorage.setItem('user', JSON.stringify(merged));
+        setUser(merged);
+      }
+    } catch (e) {
+      console.warn('[refreshUser] error:', e.message);
+    }
+  }, []);
+
   const isAuthenticated = Boolean(token);
 
   return (
-    <AuthContext.Provider value={{ token, user, isAuthenticated, login, logout, updateUser }}>
+    <AuthContext.Provider value={{ token, user, isAuthenticated, login, logout, updateUser, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

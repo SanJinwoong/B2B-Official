@@ -167,6 +167,12 @@ export const clientOrdersApi = {
   respondSample:  (id, status) => api.patch(`/orders/${id}/sample`, { status }),
 };
 
+// ─── Order Messages (Chat B2B Fase 4) ──────────────────────────────────────────
+export const orderMessagesApi = {
+  getMessages: (orderId) => api.get(`/orders/${orderId}/messages`),
+  send:        (orderId, content) => api.post(`/orders/${orderId}/messages`, { content }),
+};
+
 // ─── Notificaciones ────────────────────────────────────────────────────────────
 export const notificationsApi = {
   getUnread: () => api.get('/notifications'),

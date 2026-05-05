@@ -191,7 +191,7 @@ const ClientRegisterPage = () => {
       };
       const { data } = await authApi.register(payload);
       login(data.token, data.user);
-      navigate('/products', { replace: true });
+      navigate('/client/dashboard', { replace: true });
     } catch (err) {
       const res = err.response?.data;
       if (res?.errors) {

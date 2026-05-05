@@ -1,12 +1,12 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import PrivateRoute from './components/PrivateRoute';
 import Navbar from './components/Navbar';
 import LoginPage              from './pages/LoginPage';
 import RegisterRolePage       from './pages/RegisterRolePage';
 import ClientRegisterPage     from './pages/ClientRegisterPage';
-import ProductsPage           from './pages/ProductsPage';
+
 import AdminUsersPage         from './pages/AdminUsersPage';
 import AdminOrdersPage        from './pages/AdminOrdersPage';
 import CheckStatusPage        from './pages/CheckStatusPage';
@@ -39,6 +39,19 @@ import SupplierPerformancePage from './features/supplier-portal/pages/SupplierPe
 import SupplierSettingsPage    from './features/supplier-portal/pages/SupplierSettingsPage';
 import SupplierOpportunitiesPage from './features/supplier-portal/pages/SupplierOpportunitiesPage';
 
+const RootRedirect = () => {
+  const { isAuthenticated, user } = useAuth();
+  
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  
+  switch (user?.role) {
+    case 'ADMIN': return <Navigate to="/admin/applications" replace />;
+    case 'SUPPLIER': return <Navigate to="/proveedor/dashboard" replace />;
+    case 'CLIENT': return <Navigate to="/client/marketplace" replace />;
+    default: return <Navigate to="/login" replace />;
+  }
+};
+
 const App = () => {
   return (
     <ThemeProvider>
@@ -46,8 +59,8 @@ const App = () => {
         <BrowserRouter>
           <Navbar />
           <Routes>
-          {/* Ruta raíz → redirige a productos */}
-          <Route path="/" element={<Navigate to="/products" replace />} />
+          {/* Ruta raíz dinámica */}
+          <Route path="/" element={<RootRedirect />} />
 
           {/* Rutas públicas de autenticación */}
           <Route path="/login"              element={<LoginPage />} />
@@ -85,14 +98,7 @@ const App = () => {
               </PrivateRoute>
             }
           />
-          <Route
-            path="/products"
-            element={
-              <PrivateRoute>
-                <ProductsPage />
-              </PrivateRoute>
-            }
-          />
+
 
           {/* Rutas exclusivas de ADMIN */}
           <Route
@@ -187,7 +193,7 @@ const App = () => {
           </Route>
 
           {/* Fallback */}
-          <Route path="*" element={<Navigate to="/products" replace />} />
+          <Route path="*" element={<RootRedirect />} />
         </Routes>
         </BrowserRouter>
       </AuthProvider>

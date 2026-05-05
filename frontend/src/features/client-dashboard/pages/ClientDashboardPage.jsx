@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Package, FileText, CreditCard, Plus, ArrowRight,
-  CheckCircle, AlertTriangle, MessageCircle, Clock, ChevronRight,
+  CheckCircle, AlertTriangle, MessageCircle, Clock, ChevronRight, ShieldCheck,
 } from 'lucide-react';
 import { dashboardApi, rfqApi } from '../../../api/api';
 import { useAuth } from '../../../context/AuthContext';
+import ClientVerificationOverlay from '../../../components/ClientVerificationOverlay';
 
 /* ── Constants ────────────────────────────────────────────────────────────── */
 const PHASE_KEYS = ['INITIAL_PAYMENT', 'PRODUCTION', 'QUALITY_CONTROL', 'SHIPPING', 'DELIVERED'];
@@ -89,6 +90,7 @@ export default function ClientDashboardPage() {
 
   const [data,    setData]    = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showVerification, setShowVerification] = useState(false);
 
   useEffect(() => {
     dashboardApi.getSummary()
@@ -103,6 +105,37 @@ export default function ClientDashboardPage() {
 
   return (
     <div>
+      {!user?.profileCompleted && (
+        <div style={{ background: 'linear-gradient(to right, #eff6ff, #dbeafe)', border: '1px solid #bfdbfe', borderRadius: '12px', padding: '16px 20px', marginBottom: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
+            <div style={{ width: '40px', height: '40px', background: '#dbeafe', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <ShieldCheck size={20} color="#2563eb" />
+            </div>
+            <div>
+              <h3 style={{ margin: '0 0 4px 0', color: '#1e3a8a', fontSize: '1rem', fontWeight: 700 }}>
+                ¡Bienvenido a B2B Supply! Gracias por registrarte.
+              </h3>
+              <p style={{ margin: 0, color: '#1e40af', fontSize: '0.85rem' }}>
+                Para poder crear cotizaciones o comprar en el marketplace necesitas terminar tu registro como cliente.
+              </p>
+            </div>
+          </div>
+          <button 
+            onClick={() => setShowVerification(true)}
+            style={{ padding: '8px 16px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}
+          >
+            Completar Registro <ArrowRight size={14} />
+          </button>
+        </div>
+      )}
+
+      {showVerification && (
+        <ClientVerificationOverlay 
+          onVerified={() => setShowVerification(false)}
+          onCancel={() => setShowVerification(false)}
+        />
+      )}
+
       {/* ── Header row ── */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
         <div>

@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, FileText, Download, CheckCircle, XCircle, AlertTriangle, Truck, Star } from 'lucide-react';
 import { clientOrdersApi } from '../../../api/api';
 import ReviewModal from '../components/ReviewModal';
+import OrderChatBox from '../../../components/OrderChatBox';
 
 const PHASES = [
   { key:'INITIAL_PAYMENT',   label:'Pago Inicial' },
@@ -188,38 +189,47 @@ export default function ClientOrderDetailPage() {
         />
       )}
 
-      {/* Stepper */}
-      <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:12,padding:'1.5rem 2rem',marginBottom:'1.5rem'}}>
-        <h2 style={{fontSize:'1rem',fontWeight:700,color:'#0f172a',marginBottom:'1.5rem'}}>Estado del Pedido — Fase {doneCount}/5</h2>
-        <div className="cd-stepper">
-          {PHASES.map(({key,label},i) => (
-            <div key={key} className={`cd-step ${stepClass(key)}`}>
-              <div className="cd-step-circle">
-                {getPhaseStatus(key)==='DONE' ? <CheckCircle size={16}/> : i+1}
-              </div>
-              <div className="cd-step-label">{label}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Documentos */}
-      <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:12,padding:'1.5rem',marginBottom:'1.5rem'}}>
-        <h2 style={{fontSize:'1rem',fontWeight:700,color:'#0f172a',marginBottom:'1rem'}}>Centro de Documentos</h2>
-        {docs.length===0
-          ? <p style={{color:'#94a3b8',fontSize:'.875rem'}}>No hay documentos disponibles aún.</p>
-          : <div className="cd-doc-list">
-              {docs.map(doc=>(
-                <div key={doc.id} className="cd-doc-item">
-                  <span style={{fontSize:'1.1rem'}}>{DOC_ICONS[doc.type]||'📎'}</span>
-                  <span className="cd-doc-label">{doc.label}</span>
-                  <a href={doc.fileUrl} target="_blank" rel="noreferrer" className="cd-btn-ghost" style={{padding:'.4rem .75rem',fontSize:'.8rem'}}>
-                    <Download size={13}/> Descargar
-                  </a>
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px' }}>
+        <div>
+          {/* Stepper */}
+          <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:12,padding:'1.5rem 2rem',marginBottom:'1.5rem'}}>
+            <h2 style={{fontSize:'1rem',fontWeight:700,color:'#0f172a',marginBottom:'1.5rem'}}>Estado del Pedido — Fase {doneCount}/5</h2>
+            <div className="cd-stepper">
+              {PHASES.map(({key,label},i) => (
+                <div key={key} className={`cd-step ${stepClass(key)}`}>
+                  <div className="cd-step-circle">
+                    {getPhaseStatus(key)==='DONE' ? <CheckCircle size={16}/> : i+1}
+                  </div>
+                  <div className="cd-step-label">{label}</div>
                 </div>
               ))}
             </div>
-        }
+          </div>
+
+          {/* Documentos */}
+          <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:12,padding:'1.5rem',marginBottom:'1.5rem'}}>
+            <h2 style={{fontSize:'1rem',fontWeight:700,color:'#0f172a',marginBottom:'1rem'}}>Centro de Documentos</h2>
+            {docs.length===0
+              ? <p style={{color:'#94a3b8',fontSize:'.875rem'}}>No hay documentos disponibles aún.</p>
+              : <div className="cd-doc-list">
+                  {docs.map(doc=>(
+                    <div key={doc.id} className="cd-doc-item">
+                      <span style={{fontSize:'1.1rem'}}>{DOC_ICONS[doc.type]||'📎'}</span>
+                      <span className="cd-doc-label">{doc.label}</span>
+                      <a href={doc.fileUrl} target="_blank" rel="noreferrer" className="cd-btn-ghost" style={{padding:'.4rem .75rem',fontSize:'.8rem'}}>
+                        <Download size={13}/> Descargar
+                      </a>
+                    </div>
+                  ))}
+                </div>
+            }
+          </div>
+        </div>
+
+        {/* Chat de Negociación */}
+        <div>
+          <OrderChatBox orderId={order.id} currentRole="CLIENT" />
+        </div>
       </div>
     </div>
   );

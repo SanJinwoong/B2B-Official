@@ -8,8 +8,8 @@ import NotificationBell from '../../../components/notifications/NotificationBell
 import '../client-dashboard.css';
 
 const NAV = [
-  { to: '/client/marketplace',label: 'Marketplace B2B',       icon: Package },
   { to: '/client/dashboard',  label: 'Dashboard',             icon: LayoutDashboard },
+  { to: '/client/marketplace',label: 'Marketplace B2B',       icon: Package },
   { to: '/client/rfqs',     label: 'Cotizaciones',        icon: FileText },
   { to: '/client/orders',   label: 'Mis Pedidos',         icon: Package },
   { to: '/client/messages', label: 'Centro de Mensajes',  icon: MessageCircle, badge: true },

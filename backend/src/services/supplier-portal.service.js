@@ -192,6 +192,24 @@ const updateOrderStatus = async (supplierId, orderId, { status, notes }) => {
     });
   }
 
+  // Generate system message in the B2B chat
+  const statusLabels = {
+    'IN_PRODUCTION': 'En Producción',
+    'QUALITY_CONTROL': 'Control de Calidad',
+    'IN_TRANSIT': 'En Tránsito',
+    'DELIVERED': 'Entregado'
+  };
+  const label = statusLabels[status] || status;
+  
+  await prisma.orderMessage.create({
+    data: {
+      orderId: Number(orderId),
+      senderId: supplierId,
+      content: `[SISTEMA] El estado de tu pedido se ha actualizado a: ${label}`,
+      hasFlaggedWords: false
+    }
+  });
+
   // Notify client if order is in transit
   if (status === 'IN_TRANSIT') {
     const { notifyUser } = require('./notification.service');
@@ -329,40 +347,44 @@ const deleteProduct = async (supplierId, productId) => {
 
 // ── Oportunidades (RFQs) ──────────────────────────────────────────────────────
 const getOpportunities = async (supplierId) => {
-  const supplierApp = await prisma.supplierApplication.findUnique({
+  const supplierApp = await prisma.supplierApplication.findFirst({
     where: { approvedUserId: supplierId }
   });
-  if (!supplierApp) return [];
 
   const allRfqs = await prisma.rFQ.findMany({
     where: {
-      status: { in: ['PENDING', 'SEARCHING', 'QUOTED'] },
-      quotes: { none: { supplierId } }
+      status: { in: ['PENDING', 'SEARCHING', 'QUOTED', 'COMPLETED', 'APPROVED', 'EXPIRED'] }
     },
-    include: { client: { select: { id: true } } },
+    include: { 
+      client: { select: { id: true } },
+      quotes: {
+        where: { supplierId }
+      }
+    },
     orderBy: { createdAt: 'desc' }
   });
 
   const normalize = (str) => str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim() : '';
-  const supplierCats = supplierApp.category ? supplierApp.category.split(',').map(normalize) : [];
+  const supplierCats = supplierApp && supplierApp.category ? supplierApp.category.split(',').map(normalize) : [];
 
-  const rfqs = allRfqs.filter(rfq => {
-    if (!rfq.category) return false;
-    const rfqCat = normalize(rfq.category);
-    if (rfqCat === 'general' || rfqCat === 'otros') return true;
-    return supplierCats.some(c => c.includes(rfqCat) || rfqCat.includes(c));
-  });
-
-  const clientIds = [...new Set(rfqs.map((o) => o.client.id))];
+  const clientIds = [...new Set(allRfqs.map((o) => o.client.id))];
   const clientAliasMap = Object.fromEntries(clientIds.map((id, i) => [id, anonClient(i)]));
 
   const parseJSON = (str, fallback) => { try { return JSON.parse(str); } catch { return fallback; } };
 
-  return rfqs.map(rfq => ({
-    ...rfq,
-    images: parseJSON(rfq.images, []),
-    clientAlias: clientAliasMap[rfq.client.id]
-  }));
+  return allRfqs.map(rfq => {
+    const rfqCat = normalize(rfq.category);
+    const isMatchingCategory = rfqCat === 'general' || rfqCat === 'otros' || supplierCats.some(c => c.includes(rfqCat) || rfqCat.includes(c));
+    
+    return {
+      ...rfq,
+      images: parseJSON(rfq.images, []),
+      clientAlias: clientAliasMap[rfq.client.id],
+      isMatchingCategory, // Para que el frontend pueda destacar los que hacen match
+      hasQuoted: rfq.quotes && rfq.quotes.length > 0,
+      myQuote: rfq.quotes && rfq.quotes.length > 0 ? rfq.quotes[0] : null
+    };
+  });
 };
 
 const submitQuote = async (supplierId, rfqId, quoteData) => {

@@ -65,6 +65,7 @@ model User {
   notifications     Notification[] @relation("UserNotifications")
   rfqRatings        RFQRating[]    @relation("SupplierRFQRatings")
   rfqQuotes         RFQQuote[]     @relation("SupplierQuotes")
+  sentOrderMessages OrderMessage[] @relation("SentOrderMessages")
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -331,6 +332,7 @@ model Order {
   documents   OrderDocument[] @relation("OrderDocuments")
   payments    Payment[]     @relation("OrderPayments")
   rfq         RFQ?          @relation("RFQOrder")
+  messages    OrderMessage[] @relation("OrderMessages")
 
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
@@ -368,6 +370,9 @@ model RFQ {
   quantity    Int
   unit        String   @default("piezas")
   category    String   @default("general")
+  budget      Float?   // Presupuesto deseado por el cliente
+  isNegotiable Boolean  @default(true) // Si el cliente permite negociar el precio
+  deadline    DateTime? // Fecha límite o de espera
   images      String   @default("[]") // JSON array de URLs/base64
 
   // PENDING | SEARCHING | QUOTED | APPROVED | EXPIRED
@@ -527,3 +532,22 @@ model ScouterRating {
 
   createdAt DateTime @default(now())
 }
+
+// ── Chat B2B entre Cliente y Proveedor (Fase 4) ─────────────────────────
+model OrderMessage {
+  id        Int      @id @default(autoincrement())
+  orderId   Int
+  order     Order    @relation("OrderMessages", fields: [orderId], references: [id], onDelete: Cascade)
+  senderId  Int
+  sender    User     @relation("SentOrderMessages", fields: [senderId], references: [id])
+  
+  content   String
+  isRead    Boolean  @default(false)
+  
+  // Auditing fields
+  hasFlaggedWords Boolean @default(false)
+  isAdminVisible  Boolean @default(true)
+  
+  createdAt DateTime @default(now())
+}
+

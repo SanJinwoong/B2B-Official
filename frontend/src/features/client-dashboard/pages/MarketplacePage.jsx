@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Search, ShoppingCart, Heart, Star, Package, X, Clock, ChevronLeft, ChevronRight, ShoppingBag, Store, Factory, Utensils, Scissors, Truck, FlaskConical, Zap, Hammer, ClipboardList, Trophy, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { marketplaceApi } from '../../../api/api';
+import { useAuth } from '../../../context/AuthContext';
+import ClientVerificationOverlay from '../../../components/ClientVerificationOverlay';
 import './marketplace.css';
 
 export function triggerCartAnimation(btnRect) {
@@ -152,6 +154,8 @@ export default function MarketplacePage() {
   const [wishlist, setWishlist]   = useState(new Set());
   const [addedId, setAddedId]     = useState(null);
   const debounce = useRef(null);
+  const { user } = useAuth();
+  const [showVerification, setShowVerification] = useState(false);
   
   // Hero Carousel State
   const [heroImages, setHeroImages] = useState([]);
@@ -223,6 +227,10 @@ export default function MarketplacePage() {
   }, [heroImages]);
 
   const handleAddCart = async (e, prod) => {
+    if (!user?.profileCompleted) {
+      setShowVerification(true);
+      return;
+    }
     const btnRect = e.currentTarget.getBoundingClientRect();
     try {
       await marketplaceApi.addToCart(prod.id, prod.moq || 1);
@@ -289,7 +297,13 @@ export default function MarketplacePage() {
           </div>
         </div>
         {/* Cart button floating */}
-        <div className="mk2-cart-fab" onClick={() => window.dispatchEvent(new CustomEvent('open-cart'))}>
+        <div className="mk2-cart-fab" onClick={() => {
+          if (!user?.profileCompleted) {
+            setShowVerification(true);
+          } else {
+            window.dispatchEvent(new CustomEvent('open-cart'));
+          }
+        }}>
           <ShoppingCart size={20} />
           <span>Ver Carrito</span>
         </div>
@@ -418,6 +432,13 @@ export default function MarketplacePage() {
         <div className="mk2-toast">
           <ShoppingCart size={18}/> Producto añadido al carrito
         </div>
+      )}
+
+      {showVerification && (
+        <ClientVerificationOverlay 
+          onVerified={() => setShowVerification(false)}
+          onCancel={() => setShowVerification(false)}
+        />
       )}
     </div>
   );

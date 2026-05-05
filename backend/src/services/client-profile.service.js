@@ -41,7 +41,7 @@ const upsertProfile = async (userId, data) => {
     throw bizError('Solo los clientes pueden gestionar un perfil empresarial.', 403);
   }
 
-  const { companyName, taxId, businessType, commercialAddress, shippingAddress, website } = data;
+  const { companyName, taxId, businessType, commercialAddress, shippingAddress, website, phone } = data;
 
   // Normalizar campos opcionales
   const cleanWebsite        = website?.trim()         || null;
@@ -69,10 +69,10 @@ const upsertProfile = async (userId, data) => {
     },
   });
 
-  // Marcar el perfil como completado en el User
+  // Marcar el perfil como completado en el User y guardar el teléfono
   await prisma.user.update({
     where: { id: userId },
-    data:  { profileCompleted: true },
+    data:  { profileCompleted: true, ...(phone && { phone }) },
   });
 
   return profile;

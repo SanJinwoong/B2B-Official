@@ -120,7 +120,7 @@ const getMyOrders = async (clientId) => {
     include: {
       orderItems: {
         include: {
-          product: { select: { id: true, name: true, price: true } },
+          product: { select: { id: true, name: true, price: true, images: true } },
         },
       },
       phases:    { orderBy: { phaseNumber: 'asc' } },
@@ -184,7 +184,7 @@ const getOrderById = async (id) => {
  * Estados válidos: PENDING → APPROVED → SHIPPED → DELIVERED
  */
 const updateOrderStatus = async (id, status) => {
-  const validStatuses = ['PENDING', 'APPROVED', 'SHIPPED', 'DELIVERED'];
+  const validStatuses = ['PENDING', 'IN_PRODUCTION', 'QUALITY_CONTROL', 'IN_TRANSIT', 'DELIVERED', 'APPROVED', 'SHIPPED'];
   if (!validStatuses.includes(status)) {
     const error = new Error(
       `Estado inválido. Los estados permitidos son: ${validStatuses.join(', ')}.`
@@ -194,8 +194,9 @@ const updateOrderStatus = async (id, status) => {
   }
 
   // Verificar que la orden existe
-  await getOrderById(id);
+  const order = await getOrderById(id);
 
+  let updatedOrder;
   if (status === 'DELIVERED') {
     const [updated] = await prisma.$transaction([
       prisma.order.update({
@@ -207,13 +208,35 @@ const updateOrderStatus = async (id, status) => {
         data: { status: 'DONE', completedAt: new Date() },
       }),
     ]);
-    return updated;
+    updatedOrder = updated;
+  } else {
+    updatedOrder = await prisma.order.update({
+      where: { id },
+      data: { status },
+    });
   }
 
-  return prisma.order.update({
-    where: { id },
-    data: { status },
+  // Generate system message in the B2B chat
+  const statusLabels = {
+    'IN_PRODUCTION': 'En Producción',
+    'QUALITY_CONTROL': 'Control de Calidad',
+    'IN_TRANSIT': 'En Tránsito',
+    'DELIVERED': 'Entregado'
+  };
+  const label = statusLabels[status] || status;
+  
+  // Try to find the system admin to act as sender, or fallback to clientId if none found
+  // For a generic system message we just need a valid senderId. We use the client themselves to avoid crashing, but we add a specific tag.
+  await prisma.orderMessage.create({
+    data: {
+      orderId: id,
+      senderId: order.supplierId || order.clientId,
+      content: `[SISTEMA] El estado de tu pedido se ha actualizado a: ${label}`,
+      hasFlaggedWords: false
+    }
   });
+
+  return updatedOrder;
 };
 
 const respondSample = async (clientId, orderId, status) => {
@@ -250,6 +273,97 @@ const respondSample = async (clientId, orderId, status) => {
   });
 };
 
+const getOrderMessages = async (orderId, userId, userRole) => {
+  const order = await prisma.order.findUnique({
+    where: { id: orderId }
+  });
+  
+  if (!order) {
+    const error = new Error('Orden no encontrada.');
+    error.statusCode = 404;
+    throw error;
+  }
+  
+  if (userRole === 'CLIENT' && order.clientId !== userId) {
+    const error = new Error('No autorizado.');
+    error.statusCode = 403;
+    throw error;
+  }
+  
+  if (userRole === 'SUPPLIER' && order.supplierId !== userId) {
+    const error = new Error('No autorizado.');
+    error.statusCode = 403;
+    throw error;
+  }
+  
+  return prisma.orderMessage.findMany({
+    where: { orderId },
+    include: {
+      sender: { select: { id: true, name: true, role: true } }
+    },
+    orderBy: { createdAt: 'asc' }
+  });
+};
+
+const sendOrderMessage = async (orderId, senderId, senderRole, content) => {
+  const order = await prisma.order.findUnique({
+    where: { id: orderId }
+  });
+  
+  if (!order) {
+    const error = new Error('Orden no encontrada.');
+    error.statusCode = 404;
+    throw error;
+  }
+  
+  // Auditing checks
+  const flaggedWordsRegex = /whatsapp|celular|\@gmail|\@yahoo|\@hotmail|telefono|teléfono/i;
+  const hasFlaggedWords = flaggedWordsRegex.test(content);
+  
+  const message = await prisma.orderMessage.create({
+    data: {
+      orderId,
+      senderId,
+      content,
+      hasFlaggedWords,
+      isAdminVisible: true
+    },
+    include: {
+      sender: { select: { id: true, name: true, role: true } }
+    }
+  });
+  
+  if (hasFlaggedWords) {
+    const adminUser = await prisma.user.findFirst({ where: { role: 'ADMIN' } });
+    if (adminUser) {
+      await prisma.notification.create({
+        data: {
+          userId: adminUser.id,
+          type: 'FLAGGED_MESSAGE',
+          title: 'Alerta de Evasión Detectada',
+          message: `El usuario ${message.sender.name} ha usado palabras prohibidas en el chat de la orden #${order.orderNumber || orderId}.`,
+          link: `/admin/orders/${orderId}`
+        }
+      });
+    }
+  }
+  
+  const receiverId = senderRole === 'CLIENT' ? order.supplierId : order.clientId;
+  if (receiverId) {
+    await prisma.notification.create({
+      data: {
+        userId: receiverId,
+        type: 'NEW_MESSAGE',
+        title: 'Nuevo Mensaje',
+        message: `Tienes un nuevo mensaje en la orden #${order.orderNumber || orderId}`,
+        link: senderRole === 'CLIENT' ? `/supplier/orders/${orderId}` : `/client/orders/${orderId}`
+      }
+    });
+  }
+  
+  return message;
+};
+
 module.exports = {
   createOrder,
   getMyOrders,
@@ -257,4 +371,6 @@ module.exports = {
   getOrderById,
   updateOrderStatus,
   respondSample,
+  getOrderMessages,
+  sendOrderMessage,
 };

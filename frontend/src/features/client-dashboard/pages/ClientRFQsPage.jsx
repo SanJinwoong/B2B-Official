@@ -2,10 +2,25 @@ import { useEffect, useState } from 'react';
 import {
   Plus, FileText, DollarSign, Package, Clock,
   ChevronDown, ChevronUp, CheckCircle, Info, AlertCircle, ArrowRight,
-  Upload, X, Image as ImageIcon
+  Upload, X, Image as ImageIcon,
+  Factory, Utensils, Scissors, Truck, Beaker, Cpu, Hammer, ClipboardList
 } from 'lucide-react';
+
+const CATEGORIES = [
+  { id: 'empaques', label: 'Empaques y Envases', icon: <Package size={20} /> },
+  { id: 'manufactura', label: 'Manufactura Industrial', icon: <Factory size={20} /> },
+  { id: 'alimentos', label: 'Alimentos y Bebidas', icon: <Utensils size={20} /> },
+  { id: 'textiles', label: 'Textiles y Confección', icon: <Scissors size={20} /> },
+  { id: 'logistica', label: 'Logística y Transporte', icon: <Truck size={20} /> },
+  { id: 'quimicos', label: 'Químicos e Insumos', icon: <Beaker size={20} /> },
+  { id: 'electronica', label: 'Electrónica y Componentes', icon: <Cpu size={20} /> },
+  { id: 'construccion', label: 'Construcción y Materiales', icon: <Hammer size={20} /> },
+  { id: 'otros', label: 'Otros', icon: <ClipboardList size={20} /> },
+];
 import { rfqApi } from '../../../api/api';
 import { useDropzone } from 'react-dropzone';
+import { useAuth } from '../../../context/AuthContext';
+import ClientVerificationOverlay from '../../../components/ClientVerificationOverlay';
 
 /* ── Status definitions ───────────────────────────────────────────────────── */
 const STATUS_MAP = {
@@ -110,13 +125,34 @@ function RFQBody({ rfq, onApprove, approving }) {
 
   return (
     <div className="rfq-body">
-      {/* Info row: Description | Quantity | Updated */}
-      {rfq.description && (
-        <div className="rfq-info-grid">
-          <div>
-            <div className="rfq-info-label">DESCRIPCIÓN</div>
-            <div className="rfq-info-value">{rfq.description}</div>
-          </div>
+      {/* Top Section: Planos and Stats */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '2rem' }}>
+        
+        {/* Left: Images */}
+        <div style={{ flex: 1, minWidth: '200px' }}>
+          {rfq.images && rfq.images !== '[]' && (
+            <div className="rfq-images-display">
+              <div className="rfq-info-label" style={{ marginBottom: '0.5rem' }}>PLANOS / IMÁGENES DE REFERENCIA</div>
+              <div className="rfq-image-preview-wrap" style={{ marginTop: 0 }}>
+                {(() => {
+                  try {
+                    const parsed = JSON.parse(rfq.images);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                      return parsed.map((img, i) => (
+                        <a key={i} href={img} target="_blank" rel="noreferrer" className="rfq-image-preview" style={{ cursor: 'zoom-in' }}>
+                          <img src={img} alt={`Referencia ${i+1}`} />
+                        </a>
+                      ));
+                    }
+                  } catch (e) { return null; }
+                })()}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Right: Quantity and Updated */}
+        <div style={{ display: 'flex', gap: '2rem' }}>
           <div>
             <div className="rfq-info-label">CANTIDAD</div>
             <div className="rfq-info-value bold">{(rfq.quantity || 0).toLocaleString()} {rfq.unit}</div>
@@ -126,26 +162,13 @@ function RFQBody({ rfq, onApprove, approving }) {
             <div className="rfq-info-value">{fmtShort(rfq.updatedAt)}</div>
           </div>
         </div>
-      )}
+      </div>
 
-      {/* Attached Images */}
-      {rfq.images && rfq.images !== '[]' && (
-        <div className="rfq-images-display">
-          <div className="rfq-info-label" style={{ marginTop: '1rem', marginBottom: '0.5rem' }}>PLANOS / IMÁGENES DE REFERENCIA</div>
-          <div className="rfq-image-preview-wrap" style={{ marginTop: 0 }}>
-            {(() => {
-              try {
-                const parsed = JSON.parse(rfq.images);
-                if (Array.isArray(parsed) && parsed.length > 0) {
-                  return parsed.map((img, i) => (
-                    <a key={i} href={img} target="_blank" rel="noreferrer" className="rfq-image-preview" style={{ cursor: 'zoom-in' }}>
-                      <img src={img} alt={`Referencia ${i+1}`} />
-                    </a>
-                  ));
-                }
-              } catch (e) { return null; }
-            })()}
-          </div>
+      {/* Description */}
+      {rfq.description && (
+        <div style={{ marginBottom: '2rem' }}>
+          <div className="rfq-info-label" style={{ marginBottom: '0.5rem' }}>DESCRIPCIÓN</div>
+          <div className="rfq-info-value" style={{ lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>{rfq.description}</div>
         </div>
       )}
 
@@ -241,8 +264,10 @@ export default function ClientRFQsPage() {
   const [search,    setSearch]    = useState('');
   const [open,      setOpen]      = useState({});
   const [showModal, setShowModal] = useState(false);
+  const [showVerification, setShowVerification] = useState(false);
+  const { user } = useAuth();
   const [form,      setForm]      = useState({
-    title: '', description: '', quantity: '', unit: 'piezas', budget: '', deadline: '', category: 'general', images: []
+    title: '', description: '', quantity: '', unit: 'piezas', budget: '', isNegotiable: true, deadline: '', category: '', customCategory: '', images: []
   });
   const [saving,    setSaving]    = useState(false);
   const [approving, setApproving] = useState(null);
@@ -278,7 +303,7 @@ export default function ClientRFQsPage() {
 
   useEffect(() => { load(); }, []);
 
-  const toggle = (id) => setOpen(p => ({ ...p, [id]: !p[id] }));
+  const toggle = (id) => setOpen(p => (p[id] ? {} : { [id]: true }));
 
   const filtered = rfqs.filter(r => {
     const matchFilter =
@@ -291,12 +316,15 @@ export default function ClientRFQsPage() {
   });
 
   const handleCreate = async (e) => {
-    e.preventDefault(); setSaving(true);
+    e.preventDefault(); 
+    if (!form.category) { showToast('Por favor selecciona una categoría', 'error'); return; }
+    setSaving(true);
     try {
-      await rfqApi.create({ ...form, quantity: Number(form.quantity) });
+      const finalCategory = form.category === 'otros' ? form.customCategory : form.category;
+      await rfqApi.create({ ...form, quantity: Number(form.quantity), category: finalCategory });
       setShowModal(false);
       showToast("Solicitud de cotización creada exitosamente");
-      setForm({ title: '', description: '', quantity: '', unit: 'piezas', budget: '', deadline: '', category: 'general', images: [] });
+      setForm({ title: '', description: '', quantity: '', unit: 'piezas', budget: '', isNegotiable: true, deadline: '', category: '', customCategory: '', images: [] });
       load();
     } catch (err) { showToast(err.response?.data?.message || 'Error al crear la solicitud', 'error'); }
     finally { setSaving(false); }
@@ -330,10 +358,23 @@ export default function ClientRFQsPage() {
             Solicitudes de <span style={{ color: '#2563eb' }}>productos</span> enviadas a nuestro equipo.
           </p>
         </div>
-        <button className="cd-btn-primary" onClick={() => setShowModal(true)}>
+        <button className="cd-btn-primary" onClick={() => {
+          if (!user?.profileCompleted) {
+            setShowVerification(true);
+          } else {
+            setShowModal(true);
+          }
+        }}>
           <Plus size={16} /> Nueva Solicitud
         </button>
       </div>
+
+      {showVerification && (
+        <ClientVerificationOverlay 
+          onVerified={() => { setShowVerification(false); setShowModal(true); }}
+          onCancel={() => setShowVerification(false)}
+        />
+      )}
 
       {/* ── Search + Filters ── */}
       <div className="rfq-toolbar">
@@ -373,56 +414,114 @@ export default function ClientRFQsPage() {
         <div className="cd-empty"><p className="cd-empty-text">Cargando...</p></div>
       )}
 
-      {/* ── RFQ accordion list ── */}
-      {!loading && filtered.map(rfq => {
-        const isOpen = !!open[rfq.id];
-        const { label, badge } = STATUS_MAP[rfq.status] || { label: rfq.status, badge: 'rfq-dot-gray' };
-        const needsAction = rfq.status === 'QUOTED' && !rfq.quotes?.find(q => q.isApproved);
+      {/* ── RFQ grid of cards ── */}
+      {!loading && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '20px', marginTop: '20px' }}>
+          {filtered.map(rfq => {
+            const isOpen = !!open[rfq.id];
+            const { label, badge } = STATUS_MAP[rfq.status] || { label: rfq.status, badge: 'rfq-dot-gray' };
+            const needsAction = rfq.status === 'QUOTED' && !rfq.quotes?.find(q => q.isApproved);
 
-        return (
-          <div key={rfq.id} className="rfq-card">
-            {/* ── Card header (always visible) ── */}
-            <div className="rfq-card-header" onClick={() => toggle(rfq.id)}>
-              <div className="rfq-card-file-icon">
-                <FileText size={15} />
-              </div>
+            return (
+              <div 
+                key={rfq.id} 
+                style={{ 
+                  display: 'flex', 
+                  flexDirection: 'row', 
+                  backgroundColor: '#fff', 
+                  borderRadius: '16px', 
+                  boxShadow: needsAction ? '0 4px 24px rgba(37,99,235,0.18)' : '0 4px 20px rgba(0,0,0,0.06)', 
+                  border: isOpen ? '2px solid #2563eb' : needsAction ? '2px solid #2563eb' : '2px solid transparent', 
+                  transition: 'border 0.2s, box-shadow 0.2s', 
+                  gridColumn: isOpen ? '1 / -1' : 'auto',
+                  overflow: 'hidden'
+                }}
+              >
+                {/* Left / Top Side (Always Visible) */}
+                <div style={{ display: 'flex', flexDirection: 'column', width: isOpen ? '300px' : '100%', flexShrink: 0 }}>
+                  
+                  {/* Cover Image at the Top */}
+                  <div style={{ position: 'relative', height: '180px', width: '100%', backgroundColor: 'var(--bg-muted)' }}>
+                    {(() => {
+                      let imgUrl = null;
+                      try {
+                        const parsed = JSON.parse(rfq.images);
+                        if (Array.isArray(parsed) && parsed.length > 0) imgUrl = parsed[0];
+                      } catch (e) {}
+                      if (imgUrl) {
+                        return <img src={imgUrl} alt="Referencia" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />;
+                      }
+                      return <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}><ImageIcon size={32} opacity={0.5} /></div>;
+                    })()}
+                    
+                    {/* Top-Left Quantity Badge */}
+                    <div style={{ position: 'absolute', top: '12px', left: '12px', display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', background: 'rgba(0,0,0,0.65)', color: '#fff', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 600, backdropFilter: 'blur(4px)' }}>
+                       <Package size={15} />
+                       {(rfq.quantity || 0).toLocaleString()} {rfq.unit}
+                    </div>
+                  </div>
 
-              <div className="rfq-card-info">
-                {/* Row 1: number + badges */}
-                <div className="rfq-card-badges-row">
-                  <span className="rfq-number">{rfq.rfqNumber}</span>
-                  <span className={`rfq-status-badge ${badge}`}>
-                    <span className="rfq-dot" />
-                    {label}
-                  </span>
+                  {/* Supplier Interest Banner (only when action needed) */}
                   {needsAction && (
-                    <span className="rfq-action-badge">¡Acción requerida!</span>
+                    <div style={{ background: 'linear-gradient(90deg, #2563eb, #1d4ed8)', color: '#fff', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', fontWeight: 600 }}>
+                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#fff', animation: 'pulse 1.5s infinite', flexShrink: 0 }} />
+                      {rfq.quotes?.length} proveedor{rfq.quotes?.length !== 1 ? 'es quieren' : ' quiere'} trabajar contigo — ¡Revisa sus propuestas!
+                    </div>
                   )}
-                </div>
-                {/* Row 2: title */}
-                <div className="rfq-card-title">{rfq.title}</div>
-                {/* Row 3: meta */}
-                <div className="rfq-card-meta">
-                  {(rfq.quantity || 0).toLocaleString()} {rfq.unit} · Solicitado: {fmtLong(rfq.createdAt)}
-                </div>
-              </div>
 
-              <div className="rfq-card-chevron">
-                {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-              </div>
-            </div>
+                  {/* Header & Description */}
+                  <div style={{ padding: '20px', flex: 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '4px 10px', background: 'var(--bg-muted)', borderRadius: '20px', color: 'var(--text)' }}>
+                         {rfq.rfqNumber}
+                      </span>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        <span className={`rfq-status-badge ${badge}`} style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 600 }}>
+                          <span className="rfq-dot" style={{ width: '6px', height: '6px' }} />
+                          {label}
+                        </span>
+                      </div>
+                    </div>
+                    <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--text)', margin: '0 0 8px 0', lineHeight: 1.3 }}>{rfq.title}</h3>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: '1.4' }}>
+                      {rfq.description || 'Sin descripción detallada.'}
+                    </div>
+                  </div>
 
-            {/* ── Expanded body ── */}
-            {isOpen && (
-              <RFQBody
-                rfq={rfq}
-                onApprove={handleApproveRequest}
-                approving={approving}
-              />
-            )}
-          </div>
-        );
-      })}
+                  {/* Footer Actions */}
+                  <div style={{ padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', borderTop: '1px solid var(--border)' }}>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: rfq.quotes?.length > 0 ? '#16a34a' : 'var(--text-muted)' }}>
+                      {rfq.quotes?.length > 0 ? `${rfq.quotes.length} propuesta(s)` : 'Buscando opciones...'}
+                    </div>
+                    <button 
+                      onClick={() => toggle(rfq.id)} 
+                      style={{ 
+                        padding: '8px 16px', borderRadius: '8px', 
+                        background: isOpen ? '#e2e8f0' : needsAction ? '#2563eb' : 'var(--bg-blue)', 
+                        color: isOpen ? 'var(--text)' : needsAction ? '#fff' : 'var(--primary)', 
+                        fontSize: '0.85rem', fontWeight: 600, border: 'none', cursor: 'pointer', transition: 'all 0.2s',
+                        display: 'flex', alignItems: 'center', gap: '6px'
+                      }}
+                    >
+                      {needsAction && !isOpen ? 'Ver Propuestas' : isOpen ? 'Ocultar' : 'Ver detalles'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Right Side (Expanded Content) */}
+                {isOpen && (
+                  <div style={{ flex: 1, overflow: 'hidden', background: 'var(--surface-hover)', borderLeft: '1px solid var(--border)' }}>
+                    <div style={{ padding: '24px', minWidth: '400px', height: '100%', overflowY: 'auto' }}>
+                      <RFQBody rfq={rfq} onApprove={handleApproveRequest} approving={approving} />
+                    </div>
+                  </div>
+                )}
+
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* ── Toast Notification ── */}
       {toast.show && (
@@ -540,6 +639,20 @@ export default function ClientRFQsPage() {
                       value={form.budget}
                       onChange={e => setForm(p => ({ ...p, budget: e.target.value }))}
                     />
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '12px', fontSize: '0.85rem', color: '#475569', cursor: 'pointer' }}>
+                      <input 
+                        type="checkbox" 
+                        style={{ width: '16px', height: '16px', accentColor: 'var(--primary)' }}
+                        checked={form.isNegotiable} 
+                        onChange={e => setForm(p => ({ ...p, isNegotiable: e.target.checked }))} 
+                      />
+                      ¿Se puede negociar el precio?
+                    </label>
+                    {!form.isNegotiable && (
+                      <div style={{ marginTop: '6px', fontSize: '0.75rem', color: '#dc2626', lineHeight: 1.4 }}>
+                        Al no ser negociable, es menos probable que recibas propuestas de diferentes proveedores.
+                      </div>
+                    )}
                   </div>
                   <div className="rfq-field">
                     <label className="rfq-label">Fecha límite deseada</label>
@@ -555,15 +668,34 @@ export default function ClientRFQsPage() {
                 {/* Categoría */}
                 <div className="rfq-field">
                   <label className="rfq-label">Categoría del Producto *</label>
-                  <select
-                    className="rfq-input rfq-select"
-                    value={form.category}
-                    onChange={e => setForm(p => ({ ...p, category: e.target.value }))}
-                  >
-                    {['general', 'empaques', 'manufactura', 'alimentos', 'textiles', 'logistica', 'quimicos', 'otros'].map(c => (
-                      <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '10px' }}>
+                    {CATEGORIES.map(cat => (
+                      <div
+                        key={cat.id}
+                        onClick={() => setForm(p => ({ ...p, category: cat.id }))}
+                        style={{
+                          border: `1px solid ${form.category === cat.id ? '#2563eb' : 'var(--border)'}`,
+                          backgroundColor: form.category === cat.id ? 'var(--bg-blue-light, #eff6ff)' : 'var(--card-bg)',
+                          borderRadius: '8px', padding: '12px', cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', gap: '12px',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        <div style={{ color: form.category === cat.id ? '#2563eb' : 'var(--text-muted)' }}>{cat.icon}</div>
+                        <div style={{ fontSize: '0.85rem', fontWeight: 500, color: form.category === cat.id ? '#1e3a8a' : 'var(--text)' }}>{cat.label}</div>
+                      </div>
                     ))}
-                  </select>
+                  </div>
+                  {form.category === 'otros' && (
+                    <input
+                      className="rfq-input"
+                      style={{ marginTop: '0.75rem' }}
+                      placeholder="Escribe la categoría (ej. Empaques ecológicos)"
+                      value={form.customCategory}
+                      onChange={e => setForm(p => ({ ...p, customCategory: e.target.value }))}
+                      required
+                    />
+                  )}
                 </div>
 
                 {/* Adjuntar Imágenes / Planos */}
