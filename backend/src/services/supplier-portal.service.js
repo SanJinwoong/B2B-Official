@@ -133,6 +133,7 @@ const getMyOrders = async (supplierId, { status } = {}) => {
       supplierAmount: o.supplierAmount,
       deliveryDate: o.deliveryDate,
       sampleStatus: o.sampleStatus,
+      shippingAddress: o.shippingAddress || null,
       clientAlias: clientAliasMap[o.client.id],
       phases: o.phases,
       paidAmount: o.payments
@@ -163,6 +164,14 @@ const updateOrderStatus = async (supplierId, orderId, { status, notes }) => {
   if (!allowed || allowed !== status) {
     throw Object.assign(
       new Error(`Transición no permitida: ${order.status} → ${status}`),
+      { statusCode: 400 }
+    );
+  }
+
+  // Validar muestra obligatoria
+  if (status === 'QUALITY_CONTROL' && order.sampleStatus === 'PENDING') {
+    throw Object.assign(
+      new Error(`No puedes avanzar a Control de Calidad hasta que el cliente apruebe la muestra física obligatoria.`),
       { statusCode: 400 }
     );
   }
@@ -414,6 +423,7 @@ const submitQuote = async (supplierId, rfqId, quoteData) => {
         label: `Opción de ${supplierApp?.companyName || 'Proveedor'}`,
         unitPrice: parseFloat(quoteData.unitPrice),
         totalPrice: parseFloat(quoteData.totalPrice),
+        samplePrice: quoteData.samplePrice !== undefined ? parseFloat(quoteData.samplePrice) : 0,
         deliveryDays: parseInt(quoteData.deliveryDays),
         moq: parseInt(quoteData.moq),
         notes: quoteData.notes || null,

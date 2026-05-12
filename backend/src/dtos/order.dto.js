@@ -71,6 +71,7 @@ const orderForClient = (order) => ({
   phases:       order.phases ?? [],
   documents:    order.documents ?? [],
   payments:     order.payments ?? [],
+  rfq:          order.rfq ?? null,
   // ❌ NO clientId (redundante para el cliente)
   // ❌ NO supplierAmount
   // ❌ NO margin
@@ -91,6 +92,7 @@ const orderForSupplier = (order, userId) => {
     createdAt:      order.createdAt,
     updatedAt:      order.updatedAt,
     orderItems:     filteredItems.map(itemForSupplier),
+    rfq:            order.rfq ?? null,
     // ❌ NO clientId ni client
     // ❌ NO clientAmount
     // ❌ NO margin
@@ -117,6 +119,7 @@ const orderForAdmin = (order) => ({
   phases:         order.phases ?? [],
   documents:      order.documents ?? [],
   payments:       order.payments ?? [],
+  rfq:            order.rfq ?? null,
 });
 
 // ── Función principal de transformación ──────────────────────────────────────

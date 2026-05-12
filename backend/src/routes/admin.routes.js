@@ -1,5 +1,6 @@
 const { Router } = require('express');
 const adminController = require('../controllers/admin.controller');
+const configController = require('../controllers/platformConfig.controller');
 const authenticate = require('../middlewares/authenticate');
 const authorize = require('../middlewares/authorize');
 const validate = require('../middlewares/validate');
@@ -40,5 +41,41 @@ router.patch(
   validate(updateOrderStatusSchema),
   adminController.updateOrderStatus
 );
+
+// GET /api/admin/orders/messages/flagged → obtiene pedidos con mensajes con palabras prohibidas
+router.get('/orders/messages/flagged', adminController.getFlaggedChats);
+
+// ── Configuracion de la Plataforma ────────────────────────────────────────────
+router.get('/config',   configController.getAdminConfig);
+router.patch('/config', configController.patchAdminConfig);
+
+// ── Gatekeeper: Cotizaciones (RFQs) ───────────────────────────────────────────
+
+// GET  /api/admin/rfqs           → lista todos los RFQs para el Gatekeeper
+router.get('/rfqs', adminController.getAllRFQs);
+
+// GET  /api/admin/rfqs/:id       → detalle de un RFQ y sus cotizaciones
+router.get('/rfqs/:id', adminController.getRFQById);
+
+// PATCH /api/admin/rfqs/quotes/:id/forward → aprueba una cotización para enviarla al cliente
+// Body (opcional): { unitPrice, totalPrice, samplePrice } para ajustar el margen manualmente
+router.patch('/rfqs/quotes/:id/forward', adminController.forwardQuoteToClient);
+
+// PATCH /api/admin/rfqs/quotes/:id/reject  → rechaza una cotización (la oculta al cliente)
+router.patch('/rfqs/quotes/:id/reject', adminController.rejectQuote);
+
+// PATCH /api/admin/rfqs/:id/notify-scouters → Notifica a los scouters que un RFQ está estancado
+router.patch('/rfqs/:id/notify-scouters', adminController.notifyScouters);
+
+// ── Finanzas (Pagos en Cascada) ───────────────────────────────────────────────
+
+// GET /api/admin/finances/payments → Lista todos los pagos INBOUND y OUTBOUND
+router.get('/finances/payments', adminController.getAllPayments);
+
+// PATCH /api/admin/finances/payments/:id → Actualiza estado del pago, notas o adjuntos
+router.patch('/finances/payments/:id', adminController.updatePaymentStatus);
+
+// POST /api/admin/finances/orders/:orderId/payments → Crea un nuevo milestone de pago
+router.post('/finances/orders/:orderId/payments', adminController.createPayment);
 
 module.exports = router;

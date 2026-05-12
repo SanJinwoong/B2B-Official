@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { NavLink, useNavigate, Outlet, Link } from 'react-router-dom';
-import { LayoutDashboard, Zap, Package, BookOpen, MessageSquare, Star, LogOut, Bell, ChevronDown } from 'lucide-react';
+import { LayoutDashboard, Zap, Package, BookOpen, MessageSquare, Star, LogOut, Bell, ChevronDown, Menu, Sun, Moon } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import NotificationBell from '../../components/notifications/NotificationBell';
 import './supplier-portal.css';
@@ -35,6 +35,9 @@ export default function SupplierLayout() {
   const [dropOpen, setDropOpen] = useState(false);
   const dropRef = useRef(null);
 
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
+
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropRef.current && !dropRef.current.contains(e.target)) setDropOpen(false);
@@ -43,20 +46,39 @@ export default function SupplierLayout() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Sincronizar dark mode con HTML class
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [darkMode]);
+
   const handleLogout = () => { logout(); navigate('/login'); };
   const companyInit = initials(user?.name);
 
   return (
-    <div className="sp-shell">
+    <div className={`sp-shell ${!sidebarOpen ? 'sidebar-closed' : ''}`}>
       {/* ── Sidebar ─────────────────────────────────────────── */}
-      <aside className="sp-sidebar">
+      <aside className={`sp-sidebar ${!sidebarOpen ? 'closed' : ''}`}>
         {/* Logo */}
-        <div className="sp-sidebar-logo">
-          <div className="sp-logo-icon">B2</div>
-          <div>
-            <div className="sp-logo-title">B2B Supply</div>
-            <div className="sp-logo-sub">Portal del Proveedor</div>
+        <div className="sp-sidebar-logo" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <div className="sp-logo-icon">B2</div>
+            <div>
+              <div className="sp-logo-title">B2B Supply</div>
+              <div className="sp-logo-sub">Portal del Proveedor</div>
+            </div>
           </div>
+          <button 
+            onClick={() => setSidebarOpen(false)}
+            style={{ background: 'none', border: 'none', color: '#cbd5e1', cursor: 'pointer', padding: '4px', borderRadius: '4px' }}
+          >
+            <Menu size={20} />
+          </button>
         </div>
 
         {/* Company card */}
@@ -103,11 +125,32 @@ export default function SupplierLayout() {
       </aside>
 
       {/* ── Main ────────────────────────────────────────────── */}
-      <div className="sp-main">
+      <div className={`sp-main ${!sidebarOpen ? 'expanded' : ''}`}>
         {/* Top bar */}
         <header className="sp-topbar">
-          <NotificationBell />
-          <div style={{ position: 'relative' }} ref={dropRef}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            {!sidebarOpen && (
+              <button 
+                onClick={() => setSidebarOpen(true)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+              >
+                <Menu size={20} />
+              </button>
+            )}
+          </div>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginLeft: 'auto' }}>
+            {/* Dark mode toggle */}
+            <button 
+              onClick={() => setDarkMode(!darkMode)} 
+              title="Alternar modo oscuro"
+              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+            >
+              {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+            
+            <NotificationBell />
+            <div style={{ position: 'relative' }} ref={dropRef}>
             <div className="sp-topbar-user" onClick={() => setDropOpen(!dropOpen)} style={{ cursor: 'pointer' }}>
               <div className="sp-avatar" style={{ width:32, height:32, fontSize:12 }}>
                 {user?.avatar ? <img src={user.avatar} alt="" /> : initials(user?.name)}
@@ -132,6 +175,7 @@ export default function SupplierLayout() {
                 </button>
               </div>
             )}
+            </div>
           </div>
         </header>
 

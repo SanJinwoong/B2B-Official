@@ -69,20 +69,22 @@ export default function OrderChatBox({ orderId, currentRole }) {
         ) : (
           messages.map(m => {
             const isMine = m.senderId === user.id;
+            const isAdminMessage = m.sender?.role === 'ADMIN';
+
             return (
               <div key={m.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isMine ? 'flex-end' : 'flex-start' }}>
                 <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '4px', padding: '0 4px' }}>
-                  {isMine ? 'Tú' : (m.sender?.role === 'ADMIN' ? 'Soporte B2B' : (currentRole === 'CLIENT' ? 'Proveedor' : 'Cliente'))} • {fmtTime(m.createdAt)}
+                  {isMine ? 'Tú' : (isAdminMessage ? 'Soporte B2B' : (currentRole === 'CLIENT' ? 'Proveedor' : 'Cliente'))} • {fmtTime(m.createdAt)}
                 </div>
                 <div style={{
-                  background: isMine ? '#2563eb' : (m.sender?.role === 'ADMIN' ? '#f1f5f9' : '#fff'),
-                  color: isMine ? '#fff' : '#0f172a',
+                  background: isAdminMessage ? '#1e293b' : (isMine ? '#2563eb' : '#fff'),
+                  color: isAdminMessage ? '#fff' : (isMine ? '#fff' : '#0f172a'),
                   padding: '10px 14px',
                   borderRadius: '16px',
                   borderTopRightRadius: isMine ? '4px' : '16px',
                   borderTopLeftRadius: !isMine ? '4px' : '16px',
                   boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-                  border: isMine ? 'none' : '1px solid #e2e8f0',
+                  border: isAdminMessage || isMine ? 'none' : '1px solid #e2e8f0',
                   maxWidth: '85%',
                   fontSize: '0.9rem',
                   lineHeight: '1.4',
@@ -90,7 +92,7 @@ export default function OrderChatBox({ orderId, currentRole }) {
                 }}>
                   {m.content}
                 </div>
-                {m.hasFlaggedWords && isMine && (
+                {m.hasFlaggedWords && currentRole === 'ADMIN' && (
                   <div style={{ fontSize: '0.7rem', color: '#dc2626', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <AlertTriangle size={12} /> Mensaje marcado por posible evasión.
                   </div>

@@ -1,4 +1,5 @@
 const prisma = require('../config/prisma');
+const { getMargin, applyMargin } = require('./platformConfig.service');
 
 // ── Helper: genera número de RFQ único ────────────────────────────────────
 const generateRFQNumber = async () => {
@@ -11,9 +12,13 @@ const generateRFQNumber = async () => {
 // ── Helper: genera número de Order único ──────────────────────────────────
 const generateOrderNumber = async () => {
   const year = new Date().getFullYear();
-  const count = await prisma.order.count();
-  const seq = String(count + 1).padStart(3, '0');
-  return `ORD-${year}-${seq}`;
+  // Use aggregate max id to avoid collisions when orders have been deleted
+  const agg = await prisma.order.aggregate({ _max: { id: true } });
+  const next = (agg._max.id || 0) + 1;
+  const seq = String(next).padStart(3, '0');
+  // Add a small random suffix to guarantee uniqueness in concurrent scenarios
+  const suffix = Math.floor(Math.random() * 900 + 100);
+  return `ORD-${year}-${seq}-${suffix}`;
 };
 
 /**
@@ -79,12 +84,15 @@ const createRFQ = async (clientId, { title, description, quantity, unit, categor
 
 /**
  * Retorna todos los RFQs del cliente autenticado, con sus cotizaciones.
+ * Los precios de las cotizaciones se muestran con el margen aplicado.
  */
 const getMyRFQs = async (clientId) => {
-  return prisma.rFQ.findMany({
+  const margin = await getMargin();
+  const rfqs = await prisma.rFQ.findMany({
     where: { clientId },
     include: {
       quotes: {
+        where: { adminStatus: 'FORWARDED' },
         orderBy: { id: 'asc' },
         include: {
           supplier: {
@@ -101,15 +109,39 @@ const getMyRFQs = async (clientId) => {
     },
     orderBy: { createdAt: 'desc' },
   });
+
+  // Aplicar margen a los precios de cada cotizacion antes de enviarlo al cliente
+  return rfqs.map(rfq => ({
+    ...rfq,
+    quotes: rfq.quotes.map(q => ({
+      ...q,
+      // El cliente ve los precios con margen aplicado
+      unitPrice:   applyMargin(q.unitPrice, margin),
+      totalPrice:  applyMargin(q.totalPrice, margin),
+      // samplePrice NO lleva margen (es el costo real de la muestra)
+    }))
+  }));
 };
 
 /**
  * Retorna un RFQ por ID, validando que pertenece al cliente.
+ * Los precios se devuelven con el margen aplicado.
  */
 const getRFQById = async (id, clientId) => {
+  const margin = await getMargin();
   const rfq = await prisma.rFQ.findUnique({
     where: { id },
-    include: { quotes: { orderBy: { id: 'asc' } }, order: true },
+    include: {
+      quotes: {
+        orderBy: { id: 'asc' },
+        include: {
+          supplier: {
+            select: { id: true, marketplaceRating: true, marketplaceRatingCount: true, rfqRating: true, rfqRatingCount: true }
+          }
+        }
+      },
+      order: true
+    },
   });
   if (!rfq) {
     const e = new Error('Solicitud no encontrada.'); e.statusCode = 404; throw e;
@@ -117,15 +149,23 @@ const getRFQById = async (id, clientId) => {
   if (rfq.clientId !== clientId) {
     const e = new Error('No tienes acceso a esta solicitud.'); e.statusCode = 403; throw e;
   }
-  return rfq;
+  // Aplicar margen a las cotizaciones
+  return {
+    ...rfq,
+    quotes: rfq.quotes.map(q => ({
+      ...q,
+      unitPrice:  applyMargin(q.unitPrice, margin),
+      totalPrice: applyMargin(q.totalPrice, margin),
+    }))
+  };
 };
 
 /**
  * El cliente aprueba una cotización → crea un Order con sus fases y pagos.
  */
-const approveQuote = async (rfqId, quoteId, clientId) => {
+const approveQuote = async (rfqId, quoteId, clientId, paymentPreference = 'DEPOSIT_AND_SAMPLE', shippingAddress = '') => {
   const rfq = await getRFQById(rfqId, clientId);
-  if (rfq.status !== 'QUOTED') {
+  if (!['QUOTED', 'SEARCHING'].includes(rfq.status)) {
     const e = new Error('Esta solicitud no tiene cotizaciones disponibles para aprobar.');
     e.statusCode = 400; throw e;
   }
@@ -135,15 +175,32 @@ const approveQuote = async (rfqId, quoteId, clientId) => {
   }
 
   const orderNumber = await generateOrderNumber();
+  const margin = await getMargin();
 
   return prisma.$transaction(async (tx) => {
 
-    // Depósito 50% y saldo 50%
-    const deposit = parseFloat((quote.totalPrice * 0.5).toFixed(2));
-    const balance = parseFloat((quote.totalPrice - deposit).toFixed(2));
+    // Precios: el proveedor cobra su precio real, la plataforma cobra con margen
+    const samplePrice    = quote.samplePrice || 0;
+    const supplierBase   = quote.totalPrice;                          // precio real del proveedor
+    const clientBase     = applyMargin(supplierBase, margin);         // precio con margen para el cliente
+    const clientTotal    = clientBase + samplePrice;                  // total del cliente
+    const supplierTotal  = supplierBase;                              // total del proveedor (sin muestra)
 
-    // Número de factura base: FAC-YYYY-NNN
     const invoiceBase = orderNumber.replace('ORD', 'FAC');
+    const paymentsToCreate = [];
+
+    if (paymentPreference === 'SAMPLE_ONLY' && samplePrice > 0) {
+      // Solo paga la muestra ahora — el anticipo se activa cuando apruebe la muestra
+      paymentsToCreate.push({ invoiceNumber: `${invoiceBase}-S`, type: 'SAMPLE',   percentage: 0,  amount: samplePrice,                                        status: 'PENDING' });
+      paymentsToCreate.push({ invoiceNumber: `${invoiceBase}-A`, type: 'DEPOSIT',  percentage: 50, amount: parseFloat((clientBase * 0.5).toFixed(2)),            status: 'LOCKED'  });
+      paymentsToCreate.push({ invoiceNumber: `${invoiceBase}-B`, type: 'BALANCE',  percentage: 50, amount: parseFloat((clientBase * 0.5).toFixed(2)),            status: 'LOCKED'  });
+    } else {
+      // Paga anticipo(50%) + muestra juntos ahora
+      const deposit = parseFloat((clientBase * 0.5).toFixed(2)) + samplePrice;
+      const balance = parseFloat((clientBase * 0.5).toFixed(2));
+      paymentsToCreate.push({ invoiceNumber: `${invoiceBase}-A`, type: 'DEPOSIT',  percentage: 50, amount: deposit,                                              status: 'PENDING' });
+      paymentsToCreate.push({ invoiceNumber: `${invoiceBase}-B`, type: 'BALANCE',  percentage: 50, amount: balance,                                              status: 'LOCKED'  });
+    }
 
     const order = await tx.order.create({
       data: {
@@ -151,10 +208,11 @@ const approveQuote = async (rfqId, quoteId, clientId) => {
         clientId,
         supplierId: quote.supplierId,
         status: 'IN_PRODUCTION',
-        totalAmount:    quote.totalPrice,
-        clientAmount:   quote.totalPrice,
-        supplierAmount: quote.totalPrice,
+        totalAmount:    clientTotal,    // Total facturado al cliente (con margen)
+        clientAmount:   clientTotal,    // Lo que paga el cliente
+        supplierAmount: supplierTotal,  // Lo que se le paga al proveedor (sin margen)
         sampleStatus: 'PENDING',
+        shippingAddress: shippingAddress || null,
         // Fases
         phases: {
           create: DEFAULT_PHASES.map((p, idx) => ({
@@ -164,10 +222,7 @@ const approveQuote = async (rfqId, quoteId, clientId) => {
         },
         // Pagos
         payments: {
-          create: [
-            { invoiceNumber: `${invoiceBase}-A`, type: 'DEPOSIT', percentage: 50, amount: deposit, status: 'PENDING' },
-            { invoiceNumber: `${invoiceBase}-B`, type: 'BALANCE', percentage: 50, amount: balance, status: 'PENDING' },
-          ],
+          create: paymentsToCreate,
         },
       },
       include: { phases: true, payments: true },
@@ -242,12 +297,7 @@ const getAllRFQs = async () => {
   });
 };
 
-const submitRFQRating = async (clientId, rfqId, { supplierId, stars, comment, images = [] }) => {
-  if (!supplierId) {
-    const err = new Error('El proveedor es requerido para la calificación.');
-    err.statusCode = 400; throw err;
-  }
-  
+const submitRFQRating = async (clientId, rfqId, { stars, comment, images = [] }) => {
   // Verificar si el RFQ pertenece al cliente y tiene una orden
   const rfq = await prisma.rFQ.findFirst({
     where: { id: rfqId, clientId, status: 'APPROVED' },
@@ -260,13 +310,18 @@ const submitRFQRating = async (clientId, rfqId, { supplierId, stars, comment, im
   }
 
   // Opcional: Validar que la orden esté DELIVERED (omitido si se permite calificar antes)
+  const actualSupplierId = rfq.order.supplierId;
+  if (!actualSupplierId) {
+    const err = new Error('No se pudo determinar el proveedor de esta cotización.');
+    err.statusCode = 400; throw err;
+  }
   
   const rating = await prisma.rFQRating.upsert({
     where: { rfqId_clientId: { rfqId, clientId } },
     create: {
       rfqId,
       clientId,
-      supplierId: Number(supplierId),
+      supplierId: actualSupplierId,
       stars: Number(stars),
       comment: comment || null,
       images: JSON.stringify(images),
@@ -281,13 +336,13 @@ const submitRFQRating = async (clientId, rfqId, { supplierId, stars, comment, im
 
   // Recalcular rfqRating del proveedor
   const supplierAgg = await prisma.rFQRating.aggregate({
-    where: { supplierId: Number(supplierId) },
+    where: { supplierId: actualSupplierId },
     _avg: { stars: true },
     _count: { stars: true },
   });
 
   await prisma.user.update({
-    where: { id: Number(supplierId) },
+    where: { id: actualSupplierId },
     data: {
       rfqRating: supplierAgg._avg.stars || 0,
       rfqRatingCount: supplierAgg._count.stars,
@@ -297,4 +352,38 @@ const submitRFQRating = async (clientId, rfqId, { supplierId, stars, comment, im
   return rating;
 };
 
-module.exports = { createRFQ, getMyRFQs, getRFQById, approveQuote, addQuoteToRFQ, getAllRFQs, submitRFQRating };
+const reopenRFQ = async (clientId, id) => {
+  const rfq = await prisma.rFQ.findUnique({
+    where: { id: Number(id) },
+    include: { quotes: true, order: true }
+  });
+
+  if (!rfq || rfq.clientId !== clientId) {
+    throw Object.assign(new Error('RFQ no encontrada.'), { statusCode: 404 });
+  }
+
+  // Cancel associated order if it exists and is not already cancelled
+  if (rfq.order && rfq.order.status !== 'CANCELLED') {
+    await prisma.order.update({
+      where: { id: rfq.order.id },
+      data: { status: 'CANCELLED' }
+    });
+  }
+
+  // Unapprove all quotes and change RFQ status back to SEARCHING
+  await prisma.$transaction([
+    prisma.rFQQuote.updateMany({
+      where: { rfqId: rfq.id },
+      data: { isApproved: false }
+    }),
+    prisma.rFQ.update({
+      where: { id: rfq.id },
+      data: { status: 'SEARCHING' }
+    })
+  ]);
+
+  return { success: true };
+};
+
+module.exports = { createRFQ, getMyRFQs, getRFQById, approveQuote, addQuoteToRFQ, getAllRFQs, submitRFQRating, reopenRFQ };
+

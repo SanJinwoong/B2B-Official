@@ -4,6 +4,7 @@ const authenticate = require('../middlewares/authenticate');
 const authorize = require('../middlewares/authorize');
 const validate = require('../middlewares/validate');
 const { createOrderSchema, updateOrderStatusSchema } = require('../schemas/order.schema');
+const { upload } = require('../services/upload.service');
 
 const router = Router();
 
@@ -96,6 +97,45 @@ router.post(
   authenticate,
   authorize('CLIENT', 'SUPPLIER', 'ADMIN'),
   orderController.sendOrderMessage
+);
+
+// ── Data Room / Documentos ────────────────────────────────────────────────
+
+// POST /api/orders/:id/documents
+// 🔒 Sube un documento (FAC-A, FAC-B, NDA, etc)
+router.post(
+  '/:id/documents',
+  authenticate,
+  authorize('ADMIN', 'CLIENT', 'SUPPLIER'),
+  upload.single('document'),
+  orderController.uploadDocument
+);
+
+// GET /api/orders/:id/documents
+// 🔒 Lista los documentos asociados a una orden
+router.get(
+  '/:id/documents',
+  authenticate,
+  authorize('ADMIN', 'CLIENT', 'SUPPLIER'),
+  orderController.getDocuments
+);
+
+// DELETE /api/orders/documents/:docId
+// 🔒 Elimina un documento
+router.delete(
+  '/documents/:docId',
+  authenticate,
+  authorize('ADMIN', 'CLIENT', 'SUPPLIER'),
+  orderController.deleteDocument
+);
+
+// GET /api/orders/documents/:docId/download
+// 🔒 Descarga segura del archivo
+router.get(
+  '/documents/:docId/download',
+  authenticate,
+  authorize('ADMIN', 'CLIENT', 'SUPPLIER'),
+  orderController.downloadDocument
 );
 
 module.exports = router;

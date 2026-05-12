@@ -23,14 +23,19 @@ const getRFQById = async (req, res, next) => {
 
 const approveQuote = async (req, res, next) => {
   try {
-    const { quoteId } = req.body;
+    const { quoteId, paymentPreference, shippingAddress } = req.body;
     if (!quoteId) {
       return res.status(400).json({ message: 'quoteId es requerido.' });
+    }
+    if (!shippingAddress || shippingAddress.trim() === '') {
+      return res.status(400).json({ message: 'La dirección de envío es requerida.' });
     }
     const order = await rfqService.approveQuote(
       Number(req.params.id),
       Number(quoteId),
-      req.user.id
+      req.user.id,
+      paymentPreference,
+      shippingAddress
     );
     res.status(201).json(order);
   } catch (e) { next(e); }
@@ -58,4 +63,11 @@ const getAllRFQs = async (req, res, next) => {
   } catch (e) { next(e); }
 };
 
-module.exports = { createRFQ, getMyRFQs, getRFQById, approveQuote, submitRFQRating, addQuote, getAllRFQs };
+const reopenRFQ = async (req, res, next) => {
+  try {
+    const result = await rfqService.reopenRFQ(req.user.id, Number(req.params.id));
+    res.json(result);
+  } catch (e) { next(e); }
+};
+
+module.exports = { createRFQ, getMyRFQs, getRFQById, approveQuote, submitRFQRating, addQuote, getAllRFQs, reopenRFQ };

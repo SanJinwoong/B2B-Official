@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Package, ArrowRight, MessageCircle } from 'lucide-react';
+import { Package, ArrowRight, MessageCircle, Search } from 'lucide-react';
 import { clientOrdersApi, orderMessagesApi } from '../../../api/api';
 import ChatPopup from '../../../components/ChatPopup';
 import { useAuth } from '../../../context/AuthContext';
@@ -22,6 +22,7 @@ export default function ClientOrdersPage() {
   const [orders,  setOrders]  = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter,  setFilter]  = useState('Todos');
+  const [typeFilter, setTypeFilter] = useState('Todos');
   const [search,  setSearch]  = useState('');
   const [activeChatId, setActiveChatId] = useState(null);
   const [unreadCounts, setUnreadCounts] = useState({});
@@ -63,9 +64,11 @@ export default function ClientOrdersPage() {
 
   const filtered = (orders || []).filter(o => {
     const matchF = filter==='Todos' || o.status===FILTER_STATUS[filter];
+    const matchT = typeFilter==='Todos' || (typeFilter==='Cotizaciones' ? o.rfq : !o.rfq);
     const matchS = (o.orderNumber||'').toLowerCase().includes(search.toLowerCase()) ||
-                   (o.orderItems?.[0]?.product?.name||'').toLowerCase().includes(search.toLowerCase());
-    return matchF && matchS;
+                   (o.orderItems?.[0]?.product?.name||'').toLowerCase().includes(search.toLowerCase()) ||
+                   (o.rfq?.title||'').toLowerCase().includes(search.toLowerCase());
+    return matchF && matchT && matchS;
   }).sort((a, b) => {
     if (a.status === 'DELIVERED' && b.status !== 'DELIVERED') return 1;
     if (a.status !== 'DELIVERED' && b.status === 'DELIVERED') return -1;
@@ -85,10 +88,40 @@ export default function ClientOrdersPage() {
         </div>
       </div>
       <div className="cd-filters">
-        <input className="cd-search" placeholder="Buscar por referencia o producto..." value={search} onChange={e=>setSearch(e.target.value)}/>
+        <div style={{ position: 'relative', flex: 1, maxWidth: '400px' }}>
+          <Search size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+          <input className="cd-search" style={{ width: '100%', paddingLeft: '38px', boxSizing: 'border-box' }} placeholder="Buscar por referencia o producto..." value={search} onChange={e=>setSearch(e.target.value)}/>
+        </div>
         <div className="cd-filter-pills">
+          <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>Estado:</span>
           {FILTERS.map(f=><button key={f} className={`cd-pill${filter===f?' active':''}`} onClick={()=>setFilter(f)}>{f}</button>)}
         </div>
+      </div>
+
+      {/* TABS DE ORIGEN COMO CARPETAS */}
+      <div style={{ display: 'flex', borderBottom: '2px solid var(--border)', marginBottom: '16px', gap: '4px', paddingLeft: '8px', marginTop: '10px' }}>
+        {['Todos', 'Cotizaciones', 'Marketplace'].map(t => (
+          <button
+            key={t}
+            onClick={() => setTypeFilter(t)}
+            style={{
+              padding: '10px 24px',
+              background: typeFilter === t ? '#fff' : '#f8fafc',
+              border: '2px solid',
+              borderColor: typeFilter === t ? 'var(--border) var(--border) #fff' : 'transparent',
+              borderTopLeftRadius: '8px',
+              borderTopRightRadius: '8px',
+              marginBottom: '-2px',
+              cursor: 'pointer',
+              fontSize: '0.85rem',
+              fontWeight: typeFilter === t ? 700 : 600,
+              color: typeFilter === t ? '#2563eb' : '#64748b',
+              transition: 'all 0.2s',
+            }}
+          >
+            {t}
+          </button>
+        ))}
       </div>
 
       {filtered.length===0 && <div className="cd-empty"><div className="cd-empty-icon"><Package size={22}/></div><p className="cd-empty-text">No hay pedidos en esta categoría.</p></div>}
@@ -98,9 +131,17 @@ export default function ClientOrdersPage() {
         const pct  = Math.round((done/5)*100);
         const {label,badge} = STATUS_MAP[order.status]||{label:order.status,badge:'gray'};
         const firstItem = order.orderItems?.[0];
-        const productImg = firstItem?.product?.images?.find(i => i.isPrimary)?.url
-                        || firstItem?.product?.images?.[0]?.url
-                        || null;
+        let productImg = firstItem?.product?.images?.find(i => i.isPrimary)?.url || firstItem?.product?.images?.[0]?.url || null;
+        let title = firstItem?.product?.name || 'Pedido';
+        const isRFQ = !!order.rfq;
+        
+        if (isRFQ) {
+          title = order.rfq.title;
+          try {
+            const parsed = JSON.parse(order.rfq.images);
+            if (Array.isArray(parsed) && parsed.length > 0) productImg = parsed[0];
+          } catch (e) {}
+        }
         const totalSupplierMsgs = unreadCounts[order.id] || 0;
         const lastRead = parseInt(localStorage.getItem(`chat_read_${order.id}`) || '0', 10);
         const hasUnread = totalSupplierMsgs > lastRead && activeChatId !== order.id;
@@ -109,19 +150,25 @@ export default function ClientOrdersPage() {
           <div key={order.id} className={`cd-card ${isDelivered ? 'delivered-card' : ''}`} style={{ marginBottom: '12px', opacity: isDelivered ? 0.6 : 1, filter: isDelivered ? 'grayscale(80%)' : 'none' }}>
             {/* Main row — still navigable via ArrowRight link */}
             <div className="cd-card-header">
-              <div className="cd-card-icon" style={{ overflow: 'hidden', padding: 0, background: productImg ? 'transparent' : undefined }}>
+              <div className="cd-card-icon" style={{ 
+                overflow: 'hidden', padding: 0, 
+                background: productImg ? 'transparent' : 'var(--bg-blue)',
+                width: '130px', height: '90px', flexShrink: 0, borderRadius: '8px',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)'
+              }}>
                 {productImg
-                  ? <img src={productImg} alt={firstItem?.product?.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '8px' }} />
-                  : <Package size={16}/>
+                  ? <img src={productImg} alt={firstItem?.product?.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : <Package size={32}/>
                 }
               </div>
               <div className="cd-card-meta" style={{ flex: 1 }}>
                 <div style={{display:'flex',alignItems:'center',gap:'.6rem',flexWrap:'wrap'}}>
                   <span className="cd-card-id" style={{color:'#2563eb'}}>{order.orderNumber}</span>
+                  {isRFQ ? <span className="cd-badge" style={{background:'#eef2ff',color:'#4f46e5', fontWeight: 600}}>Cotización a medida</span> : <span className="cd-badge" style={{background:'#f0fdf4',color:'#16a34a', fontWeight: 600}}>Marketplace B2B</span>}
                   <span className={`cd-badge ${badge}`}>{label}</span>
                   {order.sampleStatus==='PENDING' && <span className="cd-badge yellow no-dot">⚠ Muestra por aprobar</span>}
                 </div>
-                <div className="cd-card-title" style={{marginTop:'.2rem'}}>{firstItem?.product?.name||'Pedido'}</div>
+                <div className="cd-card-title" style={{marginTop:'.2rem'}}>{title}</div>
                 <div className="cd-progress-row" style={{marginTop:'.4rem'}}>
                   <span className="cd-progress-label">Fase {done}/5</span>
                   <div className="cd-progress-bar"><div className={`cd-progress-fill${done===5?' complete':''}`} style={{width:`${pct}%`}}/></div>
@@ -174,12 +221,20 @@ export default function ClientOrdersPage() {
       {/* Floating Chat Popup (Only 1 allowed) */}
       {activeChatOrder && (() => {
         const firstItem = activeChatOrder.orderItems?.[0];
-        const productImg = firstItem?.product?.images?.find(i => i.isPrimary)?.url || firstItem?.product?.images?.[0]?.url;
+        let productImg = firstItem?.product?.images?.find(i => i.isPrimary)?.url || firstItem?.product?.images?.[0]?.url;
+        let title = firstItem?.product?.name || 'Pedido';
+        if (activeChatOrder.rfq) {
+          title = activeChatOrder.rfq.title;
+          try {
+            const parsed = JSON.parse(activeChatOrder.rfq.images);
+            if (Array.isArray(parsed) && parsed.length > 0) productImg = parsed[0];
+          } catch (e) {}
+        }
         return (
           <ChatPopup
             key={activeChatOrder.id}
             orderId={activeChatOrder.id}
-            productName={firstItem?.product?.name || 'Pedido'}
+            productName={title}
             productImage={productImg}
             participantName="Proveedor B2B"
             currentRole="CLIENT"

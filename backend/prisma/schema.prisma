@@ -6,9 +6,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
 }
 
 
@@ -62,10 +61,15 @@ model User {
   rfqRating              Float @default(0)
   rfqRatingCount         Int   @default(0)
 
+  // Sanciones / Abuso
+  abusiveSampleRejections Int @default(0)
+  flaggedForAbuse         Boolean @default(false)
+
   notifications     Notification[] @relation("UserNotifications")
   rfqRatings        RFQRating[]    @relation("SupplierRFQRatings")
   rfqQuotes         RFQQuote[]     @relation("SupplierQuotes")
   sentOrderMessages OrderMessage[] @relation("SentOrderMessages")
+  uploadedOrderDocs OrderDocument[] @relation("UploadedOrderDocuments")
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -320,6 +324,9 @@ model Order {
   // null | PENDING | APPROVED | REJECTED
   sampleStatus   String?     @default("PENDING")
 
+  // Dirección de envío capturada al confirmar el pedido
+  shippingAddress String?
+
   // Relations
   clientId    Int
   client      User          @relation("ClientOrders", fields: [clientId], references: [id])
@@ -405,12 +412,17 @@ model RFQQuote {
 
   unitPrice       Float
   totalPrice      Float
+  samplePrice     Float    @default(0)
   deliveryDays    Int
   moq             Int               // Minimum Order Quantity
   notes           String?
   validUntil      DateTime?
 
   isApproved      Boolean  @default(false)
+  
+  // Gatekeeper Admin: PENDING_REVIEW | FORWARDED | REJECTED
+  adminStatus     String   @default("PENDING_REVIEW")
+  
   createdAt       DateTime @default(now())
 }
 
@@ -455,10 +467,14 @@ model OrderDocument {
   orderId      Int
   order        Order    @relation("OrderDocuments", fields: [orderId], references: [id], onDelete: Cascade)
 
-  // PROFORMA | PACKING_LIST | QUALITY_CERT | BILL_OF_LADING | OTHER
+  // PROFORMA | PACKING_LIST | QUALITY_CERT | BILL_OF_LADING | OTHER | NDA | FAC_A | FAC_B | PAYMENT_RECEIPT
   type         String
   label        String
   fileUrl      String
+  
+  uploadedById Int?
+  uploadedBy   User?    @relation("UploadedOrderDocuments", fields: [uploadedById], references: [id], onDelete: SetNull)
+
   createdAt    DateTime @default(now())
 }
 
@@ -478,19 +494,28 @@ model Message {
 // ── Pagos y facturas de un pedido ─────────────────────────────────────────
 model Payment {
   id            Int      @id @default(autoincrement())
-  invoiceNumber String            // "FAC-2026-031-A"
+  invoiceNumber String?           // "FAC-2026-031-A"
   orderId       Int
-  order         Order    @relation("OrderPayments", fields: [orderId], references: [id])
+  order         Order    @relation("OrderPayments", fields: [orderId], references: [id], onDelete: Cascade)
 
-  // DEPOSIT | BALANCE | FULL
+  // INBOUND (Cliente -> B2B) | OUTBOUND (B2B -> Proveedor)
+  direction     String   @default("INBOUND")
+
+  // DEPOSIT | BALANCE | FULL | MILESTONE
   type          String
   percentage    Float    @default(50)
   amount        Float
 
-  // PENDING | PAID | OVERDUE
+  // LOCKED (esperando evento) | PENDING | PAID | OVERDUE
   status        String   @default("PENDING")
   dueDate       DateTime?
   paidAt        DateTime?
+  
+  // Archivos comprobantes
+  invoiceUrl    String?  // Factura fiscal (XML/PDF)
+  receiptUrl    String?  // Comprobante de pago bancario
+  notes         String?
+
   createdAt     DateTime @default(now())
 }
 
@@ -551,3 +576,11 @@ model OrderMessage {
   createdAt DateTime @default(now())
 }
 
+// ── Configuración Global de la Plataforma (Admin) ────────────────────────────
+model PlatformConfig {
+  id                Int    @id @default(autoincrement())
+  marginPercentage  Float  @default(15)   // % de margen sobre precio del proveedor
+  currency          String @default("MXN")
+  companyName       String @default("B2B Intermediacion")
+  updatedAt         DateTime @updatedAt
+}

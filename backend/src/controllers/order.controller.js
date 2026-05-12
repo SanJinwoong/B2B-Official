@@ -184,6 +184,61 @@ const sendOrderMessage = async (req, res, next) => {
   }
 };
 
+// ── Data Room / Documentos ────────────────────────────────────────────────
+
+const uploadDocument = async (req, res, next) => {
+  try {
+    const { id: orderId } = req.params;
+    const { type, label } = req.body;
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({ message: 'No se envió ningún archivo.' });
+    }
+    if (!type || !label) {
+      return res.status(400).json({ message: 'type y label son requeridos.' });
+    }
+
+    const doc = await orderService.uploadOrderDocument(orderId, req.user, file, { type, label });
+    res.status(201).json({ message: 'Documento subido con éxito', data: doc });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const getDocuments = async (req, res, next) => {
+  try {
+    const { id: orderId } = req.params;
+    const docs = await orderService.getOrderDocuments(orderId, req.user);
+    res.json({ data: docs });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const deleteDocument = async (req, res, next) => {
+  try {
+    const { docId } = req.params;
+    await orderService.deleteOrderDocument(docId, req.user);
+    res.json({ message: 'Documento eliminado correctamente' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const downloadDocument = async (req, res, next) => {
+  try {
+    const { docId } = req.params;
+    const fileData = await orderService.downloadOrderDocument(docId, req.user);
+    
+    res.setHeader('Content-Disposition', `attachment; filename="${fileData.label}"`);
+    res.setHeader('Content-Type', 'application/octet-stream');
+    res.sendFile(fileData.filePath);
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   createOrder,
   getMyOrders,
@@ -194,5 +249,9 @@ module.exports = {
   respondSample,
   getOrderMessages,
   sendOrderMessage,
+  uploadDocument,
+  getDocuments,
+  deleteDocument,
+  downloadDocument,
 };
 

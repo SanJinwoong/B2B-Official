@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Package, Search, Box, CheckCircle, Truck, Clipboard, Clock, ArrowRight, ImageIcon, MessageCircle } from 'lucide-react';
+import { Package, Search, Box, CheckCircle, Truck, Clipboard, Clock, ArrowRight, ImageIcon, MessageCircle, XCircle } from 'lucide-react';
 import { supplierOrdersApi, orderMessagesApi } from '../../../api/api';
 import '../components/supplier-catalog.css';
 import ChatPopup from '../../../components/ChatPopup';
+import OrderDataRoom from '../../../components/OrderDataRoom';
+import { useAuth } from '../../../context/AuthContext';
 
 const STATUS_CONFIG = {
   PENDING:         { label: 'Pendiente',       color: '#6b7280', bg: '#f3f4f6', icon: Clock },
@@ -10,6 +12,7 @@ const STATUS_CONFIG = {
   QUALITY_CONTROL: { label: 'Control Calidad', color: '#d97706', bg: '#fef3c7', icon: Clipboard },
   IN_TRANSIT:      { label: 'En Tránsito',     color: '#0284c7', bg: '#e0f2fe', icon: Truck },
   DELIVERED:       { label: 'Entregado',       color: '#16a34a', bg: '#dcfce7', icon: CheckCircle },
+  CANCELLED:       { label: 'Cancelado',       color: '#6b7280', bg: '#f3f4f6', icon: XCircle },
 };
 
 const NEXT_STATUS = {
@@ -18,6 +21,7 @@ const NEXT_STATUS = {
   QUALITY_CONTROL: 'IN_TRANSIT',
   IN_TRANSIT: null,
   DELIVERED: null,
+  CANCELLED: null,
 };
 
 const fmt = (n) => `$${Number(n || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}`;
@@ -32,6 +36,9 @@ export default function SupplierOrdersPage() {
   const [activeChatId, setActiveChatId] = useState(null);
   // unread counts per order: { [orderId]: number }
   const [unreadCounts, setUnreadCounts] = useState({});
+  const [activeDataRoomId, setActiveDataRoomId] = useState(null);
+  
+  const { user } = useAuth();
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -154,7 +161,8 @@ export default function SupplierOrdersPage() {
             const productName = firstItem?.productName || 'Producto B2B';
 
             return (
-              <div key={order.id} style={{
+              <div key={order.id}>
+              <div style={{
                 background: 'var(--surface)', borderRadius: '12px', border: '1px solid var(--border)',
                 padding: '20px', display: 'flex', alignItems: 'center', gap: '20px',
                 transition: 'all 0.3s ease',
@@ -197,6 +205,19 @@ export default function SupplierOrdersPage() {
                   <div style={{ fontSize: '0.83rem', color: 'var(--text-muted)' }}>
                     {order.clientAlias || 'Cliente B2B'} · {firstItem?.quantity ? `${firstItem.quantity} unidades` : ''}
                   </div>
+
+                  {/* Shipping address — visible only to supplier */}
+                  {order.shippingAddress && (
+                    <div style={{
+                      marginTop: '6px', display: 'flex', alignItems: 'flex-start', gap: '5px',
+                      fontSize: '0.78rem', color: '#0369a1',
+                      background: '#e0f2fe', borderRadius: '6px', padding: '4px 8px',
+                      maxWidth: '380px'
+                    }}>
+                      <span style={{ flexShrink: 0, marginTop: '1px', fontWeight: 700 }}>Enviar a:</span>
+                      <span style={{ wordBreak: 'break-word' }}>{order.shippingAddress}</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Amount & date */}
@@ -210,23 +231,30 @@ export default function SupplierOrdersPage() {
                 {/* Actions */}
                 <div style={{ width: '160px', display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0 }}>
                   {nextStatus && (
-                    <button
-                      onClick={() => handleUpdateStatus(order.id, order.status)}
-                      disabled={isUpdating}
-                      style={{
-                        padding: '9px 14px', background: isUpdating ? 'var(--text-muted)' : 'var(--accent)',
-                        color: '#fff', border: 'none', borderRadius: '8px', fontSize: '0.82rem',
-                        fontWeight: 700, cursor: isUpdating ? 'wait' : 'pointer',
-                        display: 'flex', alignItems: 'center', gap: '6px',
-                        justifyContent: 'center', width: '100%',
-                        fontFamily: 'var(--font-btn)',
-                      }}
-                    >
-                      {isUpdating
-                        ? <div className="sc-spinner" style={{ width: 13, height: 13, borderTopColor: '#fff' }} />
-                        : <>{STATUS_CONFIG[nextStatus].label} <ArrowRight size={13} /></>
-                      }
-                    </button>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <button
+                        onClick={() => handleUpdateStatus(order.id, order.status)}
+                        disabled={isUpdating || (order.status === 'IN_PRODUCTION' && order.sampleStatus === 'PENDING')}
+                        style={{
+                          padding: '9px 14px', background: isUpdating || (order.status === 'IN_PRODUCTION' && order.sampleStatus === 'PENDING') ? 'var(--text-muted)' : 'var(--accent)',
+                          color: '#fff', border: 'none', borderRadius: '8px', fontSize: '0.82rem',
+                          fontWeight: 700, cursor: isUpdating || (order.status === 'IN_PRODUCTION' && order.sampleStatus === 'PENDING') ? 'not-allowed' : 'pointer',
+                          display: 'flex', alignItems: 'center', gap: '6px',
+                          justifyContent: 'center', width: '100%',
+                          fontFamily: 'var(--font-btn)',
+                        }}
+                      >
+                        {isUpdating
+                          ? <div className="sc-spinner" style={{ width: 13, height: 13, borderTopColor: '#fff' }} />
+                          : <>{STATUS_CONFIG[nextStatus].label} <ArrowRight size={13} /></>
+                        }
+                      </button>
+                      {order.status === 'IN_PRODUCTION' && order.sampleStatus === 'PENDING' && (
+                        <div style={{ fontSize: '0.7rem', color: '#dc2626', textAlign: 'center', lineHeight: 1.2, fontWeight: 600 }}>
+                          Muestra física pendiente de aprobación por el cliente
+                        </div>
+                      )}
+                    </div>
                   )}
 
                   {/* Chat button with unread dot */}
@@ -254,8 +282,38 @@ export default function SupplierOrdersPage() {
                     <MessageCircle size={14} />
                     Chat B2B
                   </button>
+
+                  {/* Documentos button */}
+                  <button
+                    onClick={() => setActiveDataRoomId(prev => prev === order.id ? null : order.id)}
+                    style={{
+                      padding: '8px 14px', background: activeDataRoomId === order.id ? '#475569' : 'transparent',
+                      color: activeDataRoomId === order.id ? '#fff' : '#475569',
+                      border: `1px solid ${activeDataRoomId === order.id ? '#475569' : '#cbd5e1'}`,
+                      borderRadius: '8px', fontSize: '0.82rem',
+                      fontWeight: 700, cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', gap: '6px',
+                      justifyContent: 'center', width: '100%',
+                      fontFamily: 'var(--font-btn)',
+                    }}
+                  >
+                    <Clipboard size={14} />
+                    Documentos
+                  </button>
                 </div>
               </div>
+              
+              {/* Order Data Room Inline */}
+              {activeDataRoomId === order.id && (
+                <div style={{ marginTop: '10px', marginBottom: '20px' }}>
+                  <OrderDataRoom 
+                    orderId={order.id} 
+                    currentUserRole="SUPPLIER" 
+                    currentUserId={user?.id}
+                  />
+                </div>
+              )}
+            </div>
             );
           })
         )}

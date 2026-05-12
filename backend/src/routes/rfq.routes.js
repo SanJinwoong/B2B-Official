@@ -10,6 +10,7 @@ router.post('/',              authenticate, authorize('CLIENT'), ctrl.createRFQ)
 router.get('/my',             authenticate, authorize('CLIENT'), ctrl.getMyRFQs);
 router.get('/my/:id',         authenticate, authorize('CLIENT'), ctrl.getRFQById);
 router.post('/my/:id/approve',authenticate, authorize('CLIENT'), ctrl.approveQuote);
+router.post('/my/:id/reopen', authenticate, authorize('CLIENT'), ctrl.reopenRFQ);
 router.post('/my/:id/ratings',authenticate, authorize('CLIENT'), ctrl.submitRFQRating);
 
 // ── Admin ─────────────────────────────────────────────────────────────────

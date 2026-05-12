@@ -93,6 +93,12 @@ export const ordersApi = {
   getAll: () => api.get('/orders'),
   getById: (id) => api.get(`/orders/${id}`),
   updateStatus: (id, status) => api.patch(`/orders/${id}/status`, { status }),
+  
+  // Data Room
+  uploadDocument: (id, formData) => api.post(`/orders/${id}/documents`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  getDocuments: (id) => api.get(`/orders/${id}/documents`),
+  deleteDocument: (docId) => api.delete(`/orders/documents/${docId}`),
+  downloadDocument: (docId) => api.get(`/orders/documents/${docId}/download`, { responseType: 'blob' }),
 };
 
 // ─── Funciones de Administración ─────────────────────────────────────────────
@@ -116,6 +122,26 @@ export const adminApi = {
   requestAction:      (id, actionNote) => api.patch(`/admin/applications/${id}/request-action`, { actionNote }),
   downloadDocumentUrl: (appId, docId) =>
     `${import.meta.env.VITE_API_URL}/admin/applications/${appId}/documents/${docId}/download`,
+    
+  // Gatekeeper RFQs
+  getAllRFQs: () => api.get('/admin/rfqs'),
+  getRFQById: (id) => api.get(`/admin/rfqs/${id}`),
+  forwardQuote: (id, updates) => api.patch(`/admin/rfqs/quotes/${id}/forward`, updates),
+  rejectQuote: (id) => api.patch(`/admin/rfqs/quotes/${id}/reject`),
+  notifyScouters: (id) => api.patch(`/admin/rfqs/${id}/notify-scouters`),
+
+  // Auditoría Chat B2B
+  getFlaggedChats: () => api.get('/admin/orders/messages/flagged'),
+
+  // Finanzas
+  getAllPayments: () => api.get('/admin/finances/payments'),
+  updatePaymentStatus: (id, data) => api.patch(`/admin/finances/payments/${id}`, data),
+};
+
+// ─── Configuracion Global de la Plataforma (Admin) ───────────────────────────
+export const adminConfigApi = {
+  getAdminConfig: () => api.get('/admin/config'),
+  patchAdminConfig: (data) => api.patch('/admin/config', data),
 };
 
 // ─── Funciones de Registro de Proveedores (públicas) ─────────────────────────
@@ -139,7 +165,9 @@ export const rfqApi = {
   create:       (data)            => api.post('/rfqs', data),
   getMyRFQs:    ()               => api.get('/rfqs/my'),
   getById:      (id)             => api.get(`/rfqs/my/${id}`),
-  approveQuote: (rfqId, quoteId) => api.post(`/rfqs/my/${rfqId}/approve`, { quoteId }),
+  approveQuote: (rfqId, quoteId, paymentPreference = 'DEPOSIT_AND_SAMPLE', shippingAddress = '') => api.post(`/rfqs/my/${rfqId}/approve`, { quoteId, paymentPreference, shippingAddress }),
+  reopenRFQ:    (rfqId)          => api.post(`/rfqs/my/${rfqId}/reopen`),
+  submitRating: (rfqId, data)    => api.post(`/rfqs/my/${rfqId}/ratings`, data),
 };
 
 // ─── Dashboard Cliente — Mensajes ─────────────────────────────────────────────

@@ -1,0 +1,229 @@
+/* ══════════════════════════════════════════════════════════════════
+   Admin Sidebar Layout  —  B2B Platform
+   Fiel al diseño Figma: sidebar blanca, fondo gris suave, acento azul
+   Fuente: Inter (design-system.css)
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Shell principal: sidebar fija + main scrollable ─────────────── */
+.adm-shell {
+  display: flex;
+  min-height: 100vh;
+  background: var(--bg);
+  font-family: var(--font);
+}
+
+/* ── Sidebar ─────────────────────────────────────────────────────── */
+.adm-sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  background: #ffffff;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  box-shadow: 2px 0 8px rgba(0,0,0,0.04);
+}
+
+/* ── Brand (logo + nombre) ───────────────────────────────────────── */
+.adm-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.5rem 1.25rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.adm-brand-icon {
+  width: 40px;
+  height: 40px;
+  background: var(--accent-light);
+  border: 1.5px solid var(--accent-border);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.adm-brand-name {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--accent);
+  letter-spacing: -0.01em;
+  font-family: 'Montserrat', var(--font);
+  line-height: 1.2;
+}
+
+.adm-brand-sub {
+  font-size: 0.68rem;
+  color: var(--text-subtle);
+  font-weight: 500;
+  margin-top: 1px;
+  letter-spacing: 0.01em;
+}
+
+/* ── Nav items ───────────────────────────────────────────────────── */
+.adm-nav {
+  flex: 1;
+  padding: 1rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.adm-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.6rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.adm-nav-item:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.adm-nav-item--active {
+  background: var(--accent-light);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.adm-nav-item--active .adm-nav-icon {
+  color: var(--accent);
+}
+
+.adm-nav-icon {
+  flex-shrink: 0;
+  color: var(--text-subtle);
+  transition: color 0.15s ease;
+}
+
+.adm-nav-item:hover .adm-nav-icon {
+  color: var(--text);
+}
+
+/* ── User footer ─────────────────────────────────────────────────── */
+.adm-user {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 1rem 1.1rem;
+  border-top: 1px solid var(--border);
+  margin-top: auto;
+}
+
+.adm-user-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  letter-spacing: 0.03em;
+  font-family: 'Montserrat', var(--font);
+}
+
+.adm-user-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.adm-user-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.adm-user-email {
+  font-size: 0.68rem;
+  color: var(--text-subtle);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 1px;
+}
+
+.adm-logout-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--text-subtle);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.adm-logout-btn:hover {
+  background: var(--error-bg);
+  border-color: rgba(220,38,38,.2);
+  color: var(--error);
+}
+
+/* ── Main content ────────────────────────────────────────────────── */
+.adm-main {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  background: var(--bg);
+}
+
+/* ── Dark mode adjustments ───────────────────────────────────────── */
+html.dark .adm-sidebar {
+  background: var(--surface);
+  border-right-color: var(--border);
+  box-shadow: 2px 0 8px rgba(0,0,0,0.25);
+}
+
+html.dark .adm-brand-icon {
+  background: var(--accent-light);
+}
+
+html.dark .adm-nav-item--active {
+  background: var(--accent-light);
+}
+
+/* ── Responsive: collapse sidebar on small screens ───────────────── */
+@media (max-width: 768px) {
+  .adm-sidebar { width: 200px; }
+}
+
+@media (max-width: 600px) {
+  .adm-shell { flex-direction: column; }
+  .adm-sidebar {
+    width: 100%;
+    height: auto;
+    position: relative;
+    flex-direction: row;
+    flex-wrap: wrap;
+    padding-bottom: 0;
+  }
+  .adm-brand { border-bottom: none; border-right: 1px solid var(--border); flex: 0 0 auto; }
+  .adm-nav { flex-direction: row; flex-wrap: wrap; padding: 0.5rem; flex: 1; }
+  .adm-nav-item { padding: 0.5rem 0.65rem; font-size: 0.78rem; }
+  .adm-user { display: none; }
+}

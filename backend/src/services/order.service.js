@@ -1,4 +1,7 @@
 const prisma = require('../config/prisma');
+const mailService = require('./mailer.service');
+const path = require('path');
+const fs = require('fs');
 
 /**
  * Crea una orden con múltiples productos dentro de una transacción atómica.
@@ -126,6 +129,7 @@ const getMyOrders = async (clientId) => {
       phases:    { orderBy: { phaseNumber: 'asc' } },
       documents: { orderBy: { createdAt: 'asc' } },
       payments:  { orderBy: { createdAt: 'asc' } },
+      rfq:       true,
     },
     orderBy: { createdAt: 'desc' },
   });
@@ -166,6 +170,7 @@ const getOrderById = async (id) => {
       phases:    { orderBy: { phaseNumber: 'asc' } },
       documents: { orderBy: { createdAt: 'asc' } },
       payments:  { orderBy: { createdAt: 'asc' } },
+      rfq:       true,
     },
   });
 
@@ -246,6 +251,14 @@ const respondSample = async (clientId, orderId, status) => {
 
   const order = await prisma.order.findUnique({
     where: { id: Number(orderId) },
+    include: {
+      rfq: {
+        include: {
+          quotes: true
+        }
+      },
+      client: true
+    }
   });
 
   if (!order || order.clientId !== clientId) {
@@ -256,9 +269,40 @@ const respondSample = async (clientId, orderId, status) => {
     throw Object.assign(new Error('La muestra ya fue procesada.'), { statusCode: 400 });
   }
 
+  let finalOrderStatus = order.status;
+  if (status === 'REJECTED') {
+    finalOrderStatus = 'CANCELLED';
+
+    // Check if the sample was free
+    if (order.rfq && order.rfq.quotes) {
+      const approvedQuote = order.rfq.quotes.find(q => q.isApproved);
+      if (approvedQuote && approvedQuote.samplePrice === 0) {
+        const newCount = (order.client.abusiveSampleRejections || 0) + 1;
+        const isFlagged = newCount >= 3;
+        
+        await prisma.user.update({
+          where: { id: clientId },
+          data: {
+            abusiveSampleRejections: newCount,
+            flaggedForAbuse: isFlagged
+          }
+        });
+
+        if (isFlagged) {
+          const adminUser = await prisma.user.findFirst({ where: { role: 'ADMIN' } });
+          const adminEmail = adminUser?.email || process.env.ADMIN_EMAIL || 'admin@b2bplatform.com';
+          mailService.sendAbuseReport(adminEmail, order.client.name, order.client.email, newCount);
+        }
+      }
+    }
+  }
+
   return prisma.order.update({
     where: { id: Number(orderId) },
-    data: { sampleStatus: status },
+    data: { 
+      sampleStatus: status,
+      status: finalOrderStatus
+    },
     include: {
       client: true,
       supplier: true,
@@ -317,8 +361,8 @@ const sendOrderMessage = async (orderId, senderId, senderRole, content) => {
   }
   
   // Auditing checks
-  const flaggedWordsRegex = /whatsapp|celular|\@gmail|\@yahoo|\@hotmail|telefono|teléfono/i;
-  const hasFlaggedWords = flaggedWordsRegex.test(content);
+  const flaggedWordsRegex = /whatsapp|whats|wasap|wp|wpp|celular|cel|telefono|teléfono|numero|número|llamame|llámame|contactame|contáctame|pasame|pásame|\@gmail|\@yahoo|\@hotmail|\@outlook|email|correo|facebook|instagram|ig|fb|telegram|linkedin|twitter|skype|por fuera|sin comisi[oó]n|dep[oó]sito directo|cuenta bancaria|transferencia|clabe|tarjeta|efectivo/i;
+  const hasFlaggedWords = senderRole === 'ADMIN' ? false : flaggedWordsRegex.test(content);
   
   const message = await prisma.orderMessage.create({
     data: {
@@ -364,6 +408,103 @@ const sendOrderMessage = async (orderId, senderId, senderRole, content) => {
   return message;
 };
 
+// ── Data Room / Documentos ────────────────────────────────────────────────
+
+const uploadOrderDocument = async (orderId, user, file, { type, label }) => {
+  const orderIdNum = parseInt(orderId, 10);
+  
+  // Verificar acceso a la orden
+  const order = await prisma.order.findUnique({ where: { id: orderIdNum } });
+  if (!order) throw Object.assign(new Error('Orden no encontrada'), { statusCode: 404 });
+  if (user.role === 'CLIENT' && order.clientId !== user.id) throw Object.assign(new Error('No autorizado'), { statusCode: 403 });
+  if (user.role === 'SUPPLIER' && order.supplierId !== user.id) throw Object.assign(new Error('No autorizado'), { statusCode: 403 });
+
+  const doc = await prisma.orderDocument.create({
+    data: {
+      orderId: orderIdNum,
+      type,
+      label,
+      fileUrl: file.path, // guardamos el path interno, no lo expondremos crudo
+      uploadedById: user.id
+    }
+  });
+
+  return {
+    id: doc.id,
+    type: doc.type,
+    label: doc.label,
+    createdAt: doc.createdAt,
+    uploadedById: doc.uploadedById
+  };
+};
+
+const getOrderDocuments = async (orderId, user) => {
+  const orderIdNum = parseInt(orderId, 10);
+  
+  // Verificar acceso a la orden
+  const order = await prisma.order.findUnique({ where: { id: orderIdNum } });
+  if (!order) throw Object.assign(new Error('Orden no encontrada'), { statusCode: 404 });
+  if (user.role === 'CLIENT' && order.clientId !== user.id) throw Object.assign(new Error('No autorizado'), { statusCode: 403 });
+  if (user.role === 'SUPPLIER' && order.supplierId !== user.id) throw Object.assign(new Error('No autorizado'), { statusCode: 403 });
+
+  const docs = await prisma.orderDocument.findMany({
+    where: { orderId: orderIdNum },
+    include: {
+      uploadedBy: { select: { id: true, name: true, role: true } }
+    },
+    orderBy: { createdAt: 'desc' }
+  });
+
+  return docs.map(d => ({
+    id: d.id,
+    type: d.type,
+    label: d.label,
+    createdAt: d.createdAt,
+    uploadedBy: d.uploadedBy
+  }));
+};
+
+const deleteOrderDocument = async (docId, user) => {
+  const doc = await prisma.orderDocument.findUnique({ 
+    where: { id: parseInt(docId, 10) },
+    include: { order: true }
+  });
+  
+  if (!doc) throw Object.assign(new Error('Documento no encontrado'), { statusCode: 404 });
+  
+  if (user.role !== 'ADMIN') {
+    if (doc.uploadedById !== user.id) throw Object.assign(new Error('Solo puedes eliminar tus propios documentos'), { statusCode: 403 });
+  }
+
+  // Borrar de disco
+  if (fs.existsSync(doc.fileUrl)) {
+    fs.unlinkSync(doc.fileUrl);
+  }
+
+  await prisma.orderDocument.delete({ where: { id: doc.id } });
+  return true;
+};
+
+const downloadOrderDocument = async (docId, user) => {
+  const doc = await prisma.orderDocument.findUnique({ 
+    where: { id: parseInt(docId, 10) },
+    include: { order: true }
+  });
+  
+  if (!doc) throw Object.assign(new Error('Documento no encontrado'), { statusCode: 404 });
+  
+  // Seguridad de acceso
+  const { order } = doc;
+  if (user.role === 'CLIENT' && order.clientId !== user.id) throw Object.assign(new Error('No autorizado'), { statusCode: 403 });
+  if (user.role === 'SUPPLIER' && order.supplierId !== user.id) throw Object.assign(new Error('No autorizado'), { statusCode: 403 });
+
+  if (!fs.existsSync(doc.fileUrl)) {
+    throw Object.assign(new Error('El archivo físico no existe'), { statusCode: 404 });
+  }
+
+  return { filePath: path.resolve(doc.fileUrl), label: doc.label };
+};
+
 module.exports = {
   createOrder,
   getMyOrders,
@@ -373,4 +514,8 @@ module.exports = {
   respondSample,
   getOrderMessages,
   sendOrderMessage,
+  uploadOrderDocument,
+  getOrderDocuments,
+  deleteOrderDocument,
+  downloadOrderDocument,
 };

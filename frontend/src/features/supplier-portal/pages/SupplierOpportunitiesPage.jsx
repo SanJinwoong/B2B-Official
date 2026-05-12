@@ -42,8 +42,8 @@ export default function SupplierOpportunitiesPage() {
     setSubmitting(true);
     try {
       const data = quoteForms[rfqId];
-      if (!data?.unitPrice || !data?.totalPrice || !data?.deliveryDays || !data?.moq) {
-        showToast("Llena todos los campos obligatorios", 'error');
+      if (!data?.unitPrice || !data?.totalPrice || !data?.deliveryDays || !data?.moq || data?.samplePrice === undefined || data?.samplePrice === '') {
+        showToast("Llena todos los campos obligatorios, incluyendo el costo de la muestra", 'error');
         setSubmitting(false);
         return;
       }
@@ -316,10 +316,13 @@ export default function SupplierOpportunitiesPage() {
                       {/* Expanded Form Area (Only visible when open) */}
                       {isOpen && !isSent && (
                         <div style={{ borderTop: '2px dashed var(--border)', background: 'var(--surface-hover)', padding: '24px', flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-                          <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)', margin: '0 0 10px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
                             <Send size={18} color="#2563eb" />
                             Formulario para enviar propuesta
                           </h3>
+                          <div style={{ padding: '10px 14px', background: '#fef2f2', borderLeft: '4px solid #ef4444', borderRadius: '4px', marginBottom: '20px', fontSize: '0.85rem', color: '#991b1b' }}>
+                            <strong>Política B2B:</strong> Es obligatorio enviar una muestra física al cliente para su aprobación antes de desbloquear la producción masiva del pedido. Indica el costo de la muestra a continuación (pon 0 si es gratis).
+                          </div>
                           
                           <form onSubmit={(e) => submitQuote(e, rfq.id)} style={{ display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 20 }}>
@@ -354,6 +357,16 @@ export default function SupplierOpportunitiesPage() {
                                   placeholder="Ej. 15"
                                   value={quoteForms[rfq.id]?.deliveryDays || ''}
                                   onChange={e => handleFormChange(rfq.id, 'deliveryDays', e.target.value)}
+                                />
+                              </div>
+                              <div>
+                                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#991b1b', marginBottom: 6 }}>Costo de Muestra Inicial (MXN) *</label>
+                                <input 
+                                  type="number" required step="0.01" min="0"
+                                  style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #fca5a5', background: '#fef2f2', color: '#991b1b', fontWeight: 600 }}
+                                  placeholder="0 = Gratis"
+                                  value={quoteForms[rfq.id]?.samplePrice || ''}
+                                  onChange={e => handleFormChange(rfq.id, 'samplePrice', e.target.value)}
                                 />
                               </div>
                             </div>

@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, FileText, Download, CheckCircle, XCircle, AlertTriangle, Truck, Star } from 'lucide-react';
-import { clientOrdersApi } from '../../../api/api';
+import { ArrowLeft, FileText, Download, CheckCircle, XCircle, AlertTriangle, Truck, Star, Search } from 'lucide-react';
+import { clientOrdersApi, rfqApi } from '../../../api/api';
 import ReviewModal from '../components/ReviewModal';
 import OrderChatBox from '../../../components/OrderChatBox';
+import OrderDataRoom from '../../../components/OrderDataRoom';
+import { useNavigate } from 'react-router-dom';
 
 const PHASES = [
   { key:'INITIAL_PAYMENT',   label:'Pago Inicial' },
@@ -22,7 +24,9 @@ export default function ClientOrderDetailPage() {
   const [loading,setLoading]= useState(true);
   const [confirmingReceipt, setConfirmingReceipt] = useState(null);
   const [respondingSample, setRespondingSample] = useState(null);
+  const [reopening, setReopening] = useState(false);
   const [showReview, setShowReview] = useState(false);
+  const navigate = useNavigate();
 
   const load = () => clientOrdersApi.getById(id).then(r=>{
     setOrder(r.data?.data || r.data);
@@ -111,6 +115,50 @@ export default function ClientOrderDetailPage() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Orden Cancelada */}
+      {order.status === 'CANCELLED' && (
+        <div style={{
+          background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 12, padding: '1.5rem', marginBottom: '1.5rem', 
+          display: 'flex', flexDirection: 'column', gap: '1rem', transition: 'all 0.3s'
+        }}>
+          <div>
+            <h3 style={{ margin: 0, color: '#4b5563', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <XCircle size={18} /> Pedido Cancelado
+            </h3>
+            <p style={{ margin: '4px 0 0', color: '#6b7280', fontSize: '0.9rem' }}>
+              {order.sampleStatus === 'REJECTED' 
+                ? 'El pedido fue cancelado porque rechazaste la muestra física inicial.'
+                : 'Este pedido ha sido cancelado y ya no está activo.'}
+            </p>
+          </div>
+          
+          {order.sampleStatus === 'REJECTED' && order.rfq && (
+            <div>
+              <button 
+                className="cd-btn-primary" 
+                style={{ 
+                  background: reopening ? '#9ca3af' : '#2563eb', color: '#fff', border: 'none', gap: '8px',
+                  opacity: reopening ? 0.7 : 1, cursor: reopening ? 'wait' : 'pointer'
+                }}
+                disabled={reopening}
+                onClick={async () => {
+                  setReopening(true);
+                  try {
+                    await rfqApi.reopenRFQ(order.rfq.id);
+                    navigate('/client/rfqs');
+                  } catch (e) {
+                    console.error(e);
+                    setReopening(false);
+                  }
+                }}
+              >
+                {reopening ? 'Reactivando...' : <><Search size={16} /> Buscar a otro proveedor</>}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -206,23 +254,46 @@ export default function ClientOrderDetailPage() {
             </div>
           </div>
 
-          {/* Documentos */}
-          <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:12,padding:'1.5rem',marginBottom:'1.5rem'}}>
-            <h2 style={{fontSize:'1rem',fontWeight:700,color:'#0f172a',marginBottom:'1rem'}}>Centro de Documentos</h2>
-            {docs.length===0
-              ? <p style={{color:'#94a3b8',fontSize:'.875rem'}}>No hay documentos disponibles aún.</p>
-              : <div className="cd-doc-list">
-                  {docs.map(doc=>(
-                    <div key={doc.id} className="cd-doc-item">
-                      <span style={{fontSize:'1.1rem'}}>{DOC_ICONS[doc.type]||'📎'}</span>
-                      <span className="cd-doc-label">{doc.label}</span>
-                      <a href={doc.fileUrl} target="_blank" rel="noreferrer" className="cd-btn-ghost" style={{padding:'.4rem .75rem',fontSize:'.8rem'}}>
-                        <Download size={13}/> Descargar
-                      </a>
-                    </div>
-                  ))}
-                </div>
-            }
+
+          {/* Instrucciones de Pago B2B */}
+          <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 12, padding: '1.5rem 2rem', marginBottom: '1.5rem' }}>
+            <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#0369a1', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+               Instrucciones de Pago (Plataforma B2B)
+            </h2>
+            <p style={{ fontSize: '0.9rem', color: '#0c4a6e', marginBottom: '1rem' }}>
+              Para iniciar la producción, realiza el pago correspondiente a la cuenta concentradora segura de la plataforma. 
+              Nosotros retendremos el pago hasta que confirmes la recepción, garantizando tu seguridad.
+            </p>
+            <div style={{ background: '#fff', border: '1px solid #e0f2fe', borderRadius: '8px', padding: '1rem', display: 'flex', flexWrap: 'wrap', gap: '2rem' }}>
+              <div>
+                <span style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Monto a Pagar</span>
+                <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a' }}>${(order.clientAmount || 0).toLocaleString('es-MX')} MXN</span>
+              </div>
+              <div>
+                <span style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Banco</span>
+                <span style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>BBVA México</span>
+              </div>
+              <div>
+                <span style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>CLABE Interbancaria</span>
+                <span style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a', letterSpacing: '1px' }}>012345678901234567</span>
+              </div>
+              <div>
+                <span style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Concepto</span>
+                <span style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>{order.orderNumber || `ORD-${order.id}`}</span>
+              </div>
+            </div>
+            <div style={{ marginTop: '1rem', fontSize: '0.85rem', color: '#0369a1', fontWeight: 600 }}>
+              📌 Importante: Una vez realizado el pago, sube tu comprobante (PDF o imagen) en el <strong>Data Room</strong> de abajo seleccionando el tipo "Comprobante de Pago".
+            </div>
+          </div>
+
+          {/* Data Room (Archivos y Comprobantes) */}
+          <div style={{ marginTop: '20px' }}>
+            <OrderDataRoom 
+              orderId={order.id} 
+              currentUserRole="CLIENT" 
+              currentUserId={order.clientId} 
+            />
           </div>
         </div>
 

@@ -11,14 +11,14 @@ async function main() {
   console.log('🌱 Ejecutando seed...');
 
   // ── 1. Admin ──────────────────────────────────────────────────────────────
-  const adminPw = await bcrypt.hash('admin123', 10);
+  const adminPw = await bcrypt.hash('admin 123', 10);
   const admin = await prisma.user.upsert({
     where: { id: 999 },
     update: {},
     create: {
       id: 999,
       name: 'Admin Sistema',
-      email: 'admin@b2bplatform.com',
+      email: 'admin@gmail.com',
       password: adminPw,
       role: 'ADMIN',
       profileCompleted: true,
@@ -26,17 +26,32 @@ async function main() {
   });
 
   // ── 2. Cliente de prueba ──────────────────────────────────────────────────
-  const clientPw = await bcrypt.hash('cliente123', 10);
+  const clientPw = await bcrypt.hash('jinwoong123', 10);
   const client = await prisma.user.upsert({
     where: { id: 1000 },
     update: {},
     create: {
       id: 1000,
-      name: 'María González',
-      email: 'maria@distribuidoradelnorte.com',
+      name: 'Jinwoong Client',
+      email: 'jinwoong@gmail.com',
       password: clientPw,
       role: 'CLIENT',
       phone: '+52 81 1234 5678',
+      profileCompleted: true,
+    },
+  });
+
+  // ── 2.5. Proveedor de prueba ──────────────────────────────────────────────
+  const supplierPw = await bcrypt.hash('shunwoo123', 10);
+  const supplier = await prisma.user.upsert({
+    where: { id: 1001 },
+    update: {},
+    create: {
+      id: 1001,
+      name: 'Shunwoo Supplier',
+      email: 'newshunwoo@gmail.com',
+      password: supplierPw,
+      role: 'SUPPLIER',
       profileCompleted: true,
     },
   });
@@ -312,8 +327,9 @@ async function main() {
 
   console.log('✅ Seed completado.');
   console.log('');
-  console.log('  👤 Cliente: maria@distribuidoradelnorte.com / cliente123');
-  console.log('  🛡️  Admin:  admin@b2bplatform.com / admin123');
+  console.log('  👤 Cliente:   jinwoong@gmail.com / jinwoong123');
+  console.log('  📦 Proveedor: newshunwoo@gmail.com / shunwoo123');
+  console.log('  🛡️  Admin:     admin@gmail.com / admin 123');
 }
 
 main()

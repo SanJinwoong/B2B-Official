@@ -20,6 +20,7 @@ const HIDDEN_ROUTES = [
   '/register',
   '/correccion',
   '/client',
+  '/proveedor',
 ];
 
 const Navbar = () => {

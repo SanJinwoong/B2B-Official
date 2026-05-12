@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Plus, FileText, DollarSign, Package, Clock,
   ChevronDown, ChevronUp, CheckCircle, Info, AlertCircle, ArrowRight,
@@ -17,7 +18,7 @@ const CATEGORIES = [
   { id: 'construccion', label: 'Construcción y Materiales', icon: <Hammer size={20} /> },
   { id: 'otros', label: 'Otros', icon: <ClipboardList size={20} /> },
 ];
-import { rfqApi } from '../../../api/api';
+import { rfqApi, clientProfileApi } from '../../../api/api';
 import { useDropzone } from 'react-dropzone';
 import { useAuth } from '../../../context/AuthContext';
 import ClientVerificationOverlay from '../../../components/ClientVerificationOverlay';
@@ -89,6 +90,10 @@ function QuoteCard({ quote, rfqId, onApprove, approving, isApproved, showApprove
         <div className="rfq-quote-row">
           <Package size={13} className="rfq-qr-icon teal" />
           <span>Total: <strong>${(quote.totalPrice || 0).toLocaleString()} MXN</strong></span>
+        </div>
+        <div className="rfq-quote-row" style={{ backgroundColor: '#fef2f2', padding: '4px 6px', borderRadius: '4px', margin: '-2px 0 2px -6px', width: 'calc(100% + 12px)' }}>
+          <Package size={13} className="rfq-qr-icon" style={{ color: '#ef4444' }} />
+          <span style={{ color: '#991b1b', fontSize: '0.8rem' }}>Muestra inicial: <strong>{quote.samplePrice ? `$${(quote.samplePrice || 0).toLocaleString()} MXN` : '¡Gratis!'}</strong></span>
         </div>
         <div className="rfq-quote-row">
           <Clock size={13} className="rfq-qr-icon orange" />
@@ -258,6 +263,7 @@ function RFQBody({ rfq, onApprove, approving }) {
 
 /* ── Main page ────────────────────────────────────────────────────────────── */
 export default function ClientRFQsPage() {
+  const navigate = useNavigate();
   const [rfqs,      setRFQs]      = useState([]);
   const [loading,   setLoading]   = useState(true);
   const [filter,    setFilter]    = useState('Todas');
@@ -273,6 +279,7 @@ export default function ClientRFQsPage() {
   const [approving, setApproving] = useState(null);
   const [toast,     setToast]     = useState({ show: false, message: '', type: 'success' });
   const [confirmApprove, setConfirmApprove] = useState(null);
+  const [clientAddress,  setClientAddress]  = useState('');
 
   const showToast = (message, type = 'success') => {
     setToast({ show: true, message, type });
@@ -303,6 +310,19 @@ export default function ClientRFQsPage() {
 
   useEffect(() => { load(); }, []);
 
+  // Load client's registered address to pre-fill shipping
+  useEffect(() => {
+    clientProfileApi.get()
+      .then(r => {
+        const profile = r.data?.data || r.data;
+        if (profile) {
+          const addr = profile.shippingAddress || profile.commercialAddress || '';
+          setClientAddress(addr);
+        }
+      })
+      .catch(() => {}); // silently ignore — not all clients have profile
+  }, []);
+
   const toggle = (id) => setOpen(p => (p[id] ? {} : { [id]: true }));
 
   const filtered = rfqs.filter(r => {
@@ -331,16 +351,20 @@ export default function ClientRFQsPage() {
   };
 
   const handleApproveRequest = (rfqId, quoteId) => {
-    setConfirmApprove({ rfqId, quoteId });
+    setConfirmApprove({ rfqId, quoteId, paymentPreference: 'SAMPLE_ONLY', shippingAddress: clientAddress });
   };
 
   const handleApproveConfirm = async () => {
     if (!confirmApprove) return;
-    const { rfqId, quoteId } = confirmApprove;
+    const { rfqId, quoteId, paymentPreference, shippingAddress } = confirmApprove;
+    if (!shippingAddress || shippingAddress.trim() === '') {
+      showToast('Por favor ingresa la dirección de envío.', 'error');
+      return;
+    }
     setConfirmApprove(null);
     setApproving(quoteId);
     try { 
-      await rfqApi.approveQuote(rfqId, quoteId); 
+      await rfqApi.approveQuote(rfqId, quoteId, paymentPreference, shippingAddress); 
       showToast("Cotización aprobada. Pedido generado exitosamente.");
       load(); 
     }
@@ -418,9 +442,14 @@ export default function ClientRFQsPage() {
       {!loading && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '20px', marginTop: '20px' }}>
           {filtered.map(rfq => {
+            const visibleQuotesCount = rfq.quotes?.length || 0;
+            // If the global status is QUOTED but the admin hasn't forwarded any quote to the client yet,
+            // from the client's perspective, it's still SEARCHING.
+            const displayStatus = (rfq.status === 'QUOTED' && visibleQuotesCount === 0) ? 'SEARCHING' : rfq.status;
+            
             const isOpen = !!open[rfq.id];
-            const { label, badge } = STATUS_MAP[rfq.status] || { label: rfq.status, badge: 'rfq-dot-gray' };
-            const needsAction = rfq.status === 'QUOTED' && !rfq.quotes?.find(q => q.isApproved);
+            const { label, badge } = STATUS_MAP[displayStatus] || { label: displayStatus, badge: 'rfq-dot-gray' };
+            const needsAction = displayStatus === 'QUOTED' && !rfq.quotes?.find(q => q.isApproved);
 
             return (
               <div 
@@ -494,7 +523,13 @@ export default function ClientRFQsPage() {
                       {rfq.quotes?.length > 0 ? `${rfq.quotes.length} propuesta(s)` : 'Buscando opciones...'}
                     </div>
                     <button 
-                      onClick={() => toggle(rfq.id)} 
+                      onClick={() => {
+                        if (rfq.status === 'APPROVED' && rfq.orderId) {
+                          navigate(`/client/orders/${rfq.orderId}`);
+                        } else {
+                          toggle(rfq.id);
+                        }
+                      }} 
                       style={{ 
                         padding: '8px 16px', borderRadius: '8px', 
                         background: isOpen ? '#e2e8f0' : needsAction ? '#2563eb' : 'var(--bg-blue)', 
@@ -540,19 +575,94 @@ export default function ClientRFQsPage() {
       {/* ── Confirm Approve Modal ── */}
       {confirmApprove && (
         <div className="rfq-modal-overlay" onClick={() => setConfirmApprove(null)}>
-          <div className="rfq-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+          <div className="rfq-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '480px' }}>
             <div className="rfq-modal-header">
               <div>
                 <h2 className="rfq-modal-title">Confirmar Aprobación</h2>
               </div>
               <button className="rfq-modal-close" onClick={() => setConfirmApprove(null)}>✕</button>
             </div>
-            <div className="rfq-modal-body" style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text)' }}>
-              ¿Estás seguro de que deseas aprobar esta cotización y generar un pedido formal?
+            <div className="rfq-modal-body" style={{ padding: '1.5rem', color: 'var(--text)' }}>
+              <p style={{ textAlign: 'center', marginBottom: '1.5rem' }}>¿Estás seguro de que deseas aprobar esta cotización y generar un pedido formal?</p>
+              
+              {/* Direccion de envio */}
+              <div style={{ marginBottom: '1.25rem' }}>
+                <label style={{ fontWeight: 700, fontSize: '0.9rem', display: 'block', marginBottom: '6px', color: 'var(--text)' }}>
+                  Direccion de envio <span style={{ color: '#dc2626' }}>*</span>
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder="Ej: Av. Insurgentes Sur 1234, Col. Del Valle, Ciudad de Mexico, CP 03100..."
+                  value={confirmApprove.shippingAddress}
+                  onChange={e => setConfirmApprove(p => ({ ...p, shippingAddress: e.target.value }))}
+                  style={{
+                    width: '100%', boxSizing: 'border-box', padding: '10px 12px',
+                    border: !confirmApprove.shippingAddress.trim() ? '1px solid #fca5a5' : '1px solid var(--border)',
+                    borderRadius: '8px', fontSize: '0.875rem', color: 'var(--text)',
+                    background: 'var(--surface)', resize: 'vertical', fontFamily: 'inherit',
+                    outline: 'none', lineHeight: 1.5
+                  }}
+                />
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '4px 0 0' }}>
+                  El proveedor vera esta direccion para enviar la muestra y el pedido.
+                </p>
+              </div>
+
+              {(() => {
+                const rfq = rfqs.find(r => r.id === confirmApprove.rfqId);
+                const quote = rfq?.quotes?.find(q => q.id === confirmApprove.quoteId);
+                const samplePrice = quote?.samplePrice || 0;
+                
+                return (
+                  <div style={{ background: 'var(--surface-hover)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                    <h4 style={{ fontSize: '0.9rem', marginBottom: '10px', color: 'var(--text)' }}>Opciones de Pago Inicial</h4>
+                    
+                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '10px', border: confirmApprove.paymentPreference === 'SAMPLE_ONLY' ? '1px solid #2563eb' : '1px solid var(--border)', borderRadius: '6px', background: confirmApprove.paymentPreference === 'SAMPLE_ONLY' ? '#eff6ff' : '#fff', cursor: 'pointer', marginBottom: '10px', transition: 'all 0.2s' }}>
+                      <input 
+                        type="radio" 
+                        name="paymentPreference" 
+                        value="SAMPLE_ONLY" 
+                        checked={confirmApprove.paymentPreference === 'SAMPLE_ONLY'}
+                        onChange={() => setConfirmApprove(p => ({ ...p, paymentPreference: 'SAMPLE_ONLY' }))}
+                        style={{ marginTop: '4px' }}
+                      />
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>Pagar solo la muestra {samplePrice > 0 ? `($${samplePrice.toLocaleString()} MXN)` : '(Gratis)'}</div>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>La producción masiva comenzará cuando apruebes la muestra física y pagues el anticipo.</div>
+                      </div>
+                    </label>
+
+                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '10px', border: confirmApprove.paymentPreference === 'DEPOSIT_AND_SAMPLE' ? '1px solid #2563eb' : '1px solid var(--border)', borderRadius: '6px', background: confirmApprove.paymentPreference === 'DEPOSIT_AND_SAMPLE' ? '#eff6ff' : '#fff', cursor: 'pointer', transition: 'all 0.2s' }}>
+                      <input 
+                        type="radio" 
+                        name="paymentPreference" 
+                        value="DEPOSIT_AND_SAMPLE" 
+                        checked={confirmApprove.paymentPreference === 'DEPOSIT_AND_SAMPLE'}
+                        onChange={() => setConfirmApprove(p => ({ ...p, paymentPreference: 'DEPOSIT_AND_SAMPLE' }))}
+                        style={{ marginTop: '4px' }}
+                      />
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>Pagar anticipo (50%) + muestra</div>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Asegura tu precio y lugar en la línea de producción del proveedor de inmediato.</div>
+                      </div>
+                    </label>
+                  </div>
+                );
+              })()}
             </div>
             <div className="rfq-modal-footer">
               <button type="button" className="rfq-cancel-btn" onClick={() => setConfirmApprove(null)}>Cancelar</button>
-              <button type="button" className="rfq-cancel-btn" style={{ borderColor: 'var(--primary)', color: 'var(--primary)' }} onClick={handleApproveConfirm}>Confirmar Pedido</button>
+              <button 
+                type="button" 
+                className="rfq-cancel-btn" 
+                style={{ 
+                  borderColor: confirmApprove.shippingAddress.trim() ? 'var(--primary)' : '#d1d5db', 
+                  color: confirmApprove.shippingAddress.trim() ? 'var(--primary)' : '#9ca3af',
+                  cursor: confirmApprove.shippingAddress.trim() ? 'pointer' : 'not-allowed'
+                }} 
+                onClick={handleApproveConfirm}
+                disabled={!confirmApprove.shippingAddress.trim()}
+              >Confirmar Pedido</button>
             </div>
           </div>
         </div>

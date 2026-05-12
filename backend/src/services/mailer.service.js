@@ -339,10 +339,58 @@ const sendCorrectionSubmitted = (adminEmail, applicationId, companyName) => {
   });
 };
 
+// ══════════════════════════════════════════════════════════════════════════════
+// 6. Notificación al admin — reporte de abuso (muestras gratis)
+// ══════════════════════════════════════════════════════════════════════════════
+/**
+ * Se envía al admin cuando un cliente rechaza múltiples muestras gratuitas.
+ * @param {string} adminEmail    - Correo del admin
+ * @param {string} clientName    - Nombre del cliente
+ * @param {string} clientEmail   - Correo del cliente
+ * @param {number} rejectionCount- Número de veces que ha rechazado
+ */
+const sendAbuseReport = (adminEmail, clientName, clientEmail, rejectionCount) => {
+  console.log(`[Mailer] Enviando reporte de abuso a admin ${adminEmail} sobre el cliente ${clientName}...`);
+
+  safeSend({
+    from: FROM,
+    to:   adminEmail,
+    subject: `🚨 B2B Platform — Alerta de Abuso: Cliente ${clientName}`,
+    html: `
+      <div style="${baseStyle}">
+        <div style="${headerStyle('#dc2626')}">
+          <h1 style="color:#fff;margin:0;font-size:22px;">🚨 B2B Platform</h1>
+          <p style="color:#fecaca;margin:8px 0 0;font-size:14px;">Alerta de Seguridad Automática</p>
+        </div>
+        <div style="${bodyStyle}">
+          <h2 style="margin-top:0;color:#991b1b;">Posible abuso del sistema de muestras gratis</h2>
+          <p>El sistema ha detectado que un cliente ha solicitado y posteriormente rechazado múltiples muestras de productos que se ofrecieron de forma <strong>gratuita</strong>.</p>
+
+          <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:16px;margin:16px 0;">
+            <p style="margin:0 0 8px;color:#991b1b;font-weight:600;">Detalles del Cliente:</p>
+            <ul style="color:#7f1d1d;margin:0;padding-left:20px;">
+              <li><strong>Nombre:</strong> ${clientName}</li>
+              <li><strong>Email:</strong> ${clientEmail}</li>
+              <li><strong>Muestras gratis rechazadas:</strong> ${rejectionCount}</li>
+            </ul>
+          </div>
+          
+          <p>El cliente ha sido marcado en la base de datos con el flag <code>flaggedForAbuse = true</code>.</p>
+        </div>
+        <div style="${footerStyle}">
+          B2B Platform · Sistema de Monitoreo de Seguridad
+        </div>
+      </div>
+    `,
+  });
+};
+
 module.exports = {
   sendSubmissionConfirmation,
   sendActionRequired,
   sendRejection,
   sendApproval,
   sendCorrectionSubmitted,
+  sendAbuseReport,
 };
+

@@ -10,7 +10,7 @@
  *   onClose      - Callback to close the popup
  */
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Send, AlertTriangle, Package } from 'lucide-react';
+import { X, Send, AlertTriangle, Package, Shield } from 'lucide-react';
 import { orderMessagesApi } from '../api/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -111,9 +111,9 @@ export default function ChatPopup({ orderId, productName, productImage, particip
 
       {/* Body */}
       <>
-        {/* Audit notice */}
-        <div style={{ background: '#fefce8', borderBottom: '1px solid #fde68a', padding: '6px 14px', fontSize: '0.72rem', color: '#92400e', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <AlertTriangle size={12} color="#d97706" /> Conversación auditada por B2B Supply
+        {/* Security notice */}
+        <div style={{ background: '#f0fdf4', borderBottom: '1px solid #bbf7d0', padding: '6px 14px', fontSize: '0.72rem', color: '#166534', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <Shield size={12} color="#16a34a" /> Conversación segura. Mantén la comunicación dentro de B2B Supply.
         </div>
 
         {/* Messages */}
@@ -148,9 +148,10 @@ export default function ChatPopup({ orderId, productName, productImage, particip
                 }
 
                 const isMine = m.senderId === user?.id;
+                const isAdminMessage = m.sender?.role === 'ADMIN';
                 const senderLabel = isMine
                   ? 'Tú'
-                  : m.sender?.role === 'ADMIN'
+                  : isAdminMessage
                     ? 'Soporte B2B'
                     : currentRole === 'CLIENT' ? 'Proveedor' : 'Cliente';
                 return (
@@ -159,14 +160,14 @@ export default function ChatPopup({ orderId, productName, productImage, particip
                       {senderLabel} · {fmtTime(m.createdAt)}
                     </div>
                     <div style={{
-                      background: isMine ? '#2563eb' : '#fff',
-                      color: isMine ? '#fff' : '#0f172a',
+                      background: isAdminMessage ? '#1e293b' : (isMine ? '#2563eb' : '#fff'),
+                      color: isAdminMessage ? '#fff' : (isMine ? '#fff' : '#0f172a'),
                       padding: '8px 12px',
                       borderRadius: '14px',
                       borderTopRightRadius: isMine ? '3px' : '14px',
                       borderTopLeftRadius: !isMine ? '3px' : '14px',
                       boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-                      border: isMine ? 'none' : '1px solid #e2e8f0',
+                      border: isAdminMessage || isMine ? 'none' : '1px solid #e2e8f0',
                       maxWidth: '80%',
                       fontSize: '0.875rem',
                       lineHeight: '1.4',
@@ -174,11 +175,6 @@ export default function ChatPopup({ orderId, productName, productImage, particip
                     }}>
                       {m.content}
                     </div>
-                    {m.hasFlaggedWords && isMine && (
-                      <div style={{ fontSize: '0.68rem', color: '#dc2626', marginTop: '3px', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                        <AlertTriangle size={10} /> Mensaje revisado por auditoría.
-                      </div>
-                    )}
                   </div>
                 );
               })

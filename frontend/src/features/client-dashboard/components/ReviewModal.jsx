@@ -1,11 +1,26 @@
 import { useState } from 'react';
 import { Star, X, Upload, CheckCircle } from 'lucide-react';
-import { marketplaceApi } from '../../../api/api';
+import { marketplaceApi, rfqApi } from '../../../api/api';
 
 export default function ReviewModal({ order, onClose, onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  const items = order?.orderItems || [];
+  const items = order?.orderItems?.length > 0 ? order.orderItems : (order?.rfq ? [{
+    productId: 'rfq_' + order.rfq.id,
+    quantity: order.rfq.quantity,
+    product: {
+      name: order.rfq.title,
+      images: (() => {
+        try {
+          const parsed = JSON.parse(order.rfq.images);
+          return parsed.length > 0 ? [{ url: parsed[0] }] : [];
+        } catch { return []; }
+      })()
+    },
+    isRfq: true,
+    rfqId: order.rfq.id,
+    supplierId: order.supplierId
+  }] : []);
 
   // Almacenar el estado de reseña por cada producto
   // { productId: { stars: 5, comment: '', images: [] } }
@@ -59,7 +74,16 @@ export default function ReviewModal({ order, onClose, onSuccess }) {
     try {
       for (const item of items) {
         const rev = reviews[item.productId];
-        await marketplaceApi.submitRating(item.productId, rev);
+        if (item.isRfq) {
+          await rfqApi.submitRating(item.rfqId, {
+            supplierId: item.supplierId,
+            stars: rev.stars,
+            comment: rev.comment,
+            images: rev.images
+          });
+        } else {
+          await marketplaceApi.submitRating(item.productId, rev);
+        }
       }
       setSuccess(true);
       setTimeout(() => {

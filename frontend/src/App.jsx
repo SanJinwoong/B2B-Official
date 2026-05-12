@@ -1,8 +1,9 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import PrivateRoute from './components/PrivateRoute';
 import Navbar from './components/Navbar';
+import AdminLayout from './components/AdminLayout';
 import LoginPage              from './pages/LoginPage';
 import RegisterRolePage       from './pages/RegisterRolePage';
 import ClientRegisterPage     from './pages/ClientRegisterPage';
@@ -18,6 +19,11 @@ import CorrectionPage         from './features/supplier-registration/pages/Corre
 import ApplicationsListPage   from './features/admin/pages/ApplicationsListPage';
 import ApplicationDetailPage  from './features/admin/pages/ApplicationDetailPage';
 import ScoutersPage           from './features/admin/pages/ScoutersPage';
+import AdminConfigPage        from './features/admin/pages/AdminConfigPage';
+import AdminRFQsPage          from './features/admin/pages/AdminRFQsPage';
+import AdminRFQDetailPage     from './features/admin/pages/AdminRFQDetailPage';
+import AdminChatAuditPage     from './features/admin/pages/AdminChatAuditPage';
+import AdminFinancesPage      from './features/admin/pages/AdminFinancesPage';
 // Client Dashboard
 import ClientLayout           from './features/client-dashboard/layout/ClientLayout';
 import ClientDashboardPage    from './features/client-dashboard/pages/ClientDashboardPage';
@@ -39,6 +45,14 @@ import SupplierPerformancePage from './features/supplier-portal/pages/SupplierPe
 import SupplierSettingsPage    from './features/supplier-portal/pages/SupplierSettingsPage';
 import SupplierOpportunitiesPage from './features/supplier-portal/pages/SupplierOpportunitiesPage';
 
+
+// Hide the top Navbar when we are inside the admin shell (has its own sidebar)
+const ConditionalNavbar = () => {
+  const { pathname } = useLocation();
+  if (pathname.startsWith('/admin')) return null;
+  return <Navbar />;
+};
+
 const RootRedirect = () => {
   const { isAuthenticated, user } = useAuth();
   
@@ -57,7 +71,7 @@ const App = () => {
     <ThemeProvider>
       <AuthProvider>
         <BrowserRouter>
-          <Navbar />
+          <ConditionalNavbar />
           <Routes>
           {/* Ruta raíz dinámica */}
           <Route path="/" element={<RootRedirect />} />
@@ -100,51 +114,28 @@ const App = () => {
           />
 
 
-          {/* Rutas exclusivas de ADMIN */}
+          {/* Rutas exclusivas de ADMIN — todas dentro del sidebar AdminLayout */}
           <Route
-            path="/admin/users"
+            path="/admin"
             element={
               <PrivateRoute roles={['ADMIN']}>
-                <AdminUsersPage />
+                <AdminLayout><Outlet /></AdminLayout>
               </PrivateRoute>
             }
-          />
-          <Route
-            path="/admin/orders"
-            element={
-              <PrivateRoute roles={['ADMIN']}>
-                <AdminOrdersPage />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/admin/applications"
-            element={
-              <PrivateRoute roles={['ADMIN']}>
-                <ApplicationsListPage />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/admin/applications/:id"
-            element={
-              <PrivateRoute roles={['ADMIN']}>
-                <ApplicationDetailPage />
-              </PrivateRoute>
-            }
-          />
+          >
+            <Route index                  element={<Navigate to="applications" replace />} />
+            <Route path="applications"    element={<ApplicationsListPage />} />
+            <Route path="applications/:id" element={<ApplicationDetailPage />} />
+            <Route path="users"           element={<AdminUsersPage />} />
+            <Route path="orders"          element={<AdminOrdersPage />} />
+            <Route path="rfqs"            element={<AdminRFQsPage />} />
+            <Route path="rfqs/:id"        element={<AdminRFQDetailPage />} />
+            <Route path="chats-audit"     element={<AdminChatAuditPage />} />
+            <Route path="finances"        element={<AdminFinancesPage />} />
+            <Route path="scouters"        element={<ScoutersPage />} />
+            <Route path="config"          element={<AdminConfigPage />} />
+          </Route>
 
-          <Route
-            path="/admin/scouters"
-            element={
-              <PrivateRoute roles={['ADMIN']}>
-                <ScoutersPage />
-              </PrivateRoute>
-            }
-          />
-
-          {/* /admin sin subruta → redirige a aplicaciones */}
-          <Route path="/admin" element={<Navigate to="/admin/applications" replace />} />
 
           {/* Dashboard Cliente (layout propio, sin Navbar) */}
           <Route

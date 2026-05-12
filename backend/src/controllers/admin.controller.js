@@ -89,10 +89,118 @@ const updateOrderStatus = async (req, res, next) => {
   }
 };
 
+/**
+ * GET /api/admin/orders/messages/flagged
+ * 🔒 Solo ADMIN
+ * Lista los pedidos que tienen mensajes marcados por palabras prohibidas.
+ */
+const getFlaggedChats = async (req, res, next) => {
+  try {
+    const chats = await adminService.getFlaggedChats();
+    res.status(200).json({ data: chats });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ─── GATEKEEPER: RFQs ────────────────────────────────────────────────────────
+
+const getAllRFQs = async (req, res, next) => {
+  try {
+    const rfqs = await adminService.getAllRFQs();
+    res.status(200).json({ data: rfqs });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getRFQById = async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id);
+    const rfq = await adminService.getRFQById(id);
+    res.status(200).json({ data: rfq });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const forwardQuoteToClient = async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id);
+    const updates = req.body; // { unitPrice, totalPrice, samplePrice } optional overrides
+    const quote = await adminService.forwardQuoteToClient(id, updates);
+    res.status(200).json({ message: 'Cotización liberada al cliente', data: quote });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const rejectQuote = async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id);
+    const quote = await adminService.rejectQuote(id);
+    res.status(200).json({ message: 'Cotización rechazada', data: quote });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const notifyScouters = async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id);
+    await adminService.notifyScoutersForRFQ(id);
+    res.status(200).json({ message: 'Scouters notificados' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ─── FINANZAS ────────────────────────────────────────────────────────────────
+
+const getAllPayments = async (req, res, next) => {
+  try {
+    const payments = await adminService.getAllPayments();
+    res.status(200).json({ data: payments });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updatePaymentStatus = async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id);
+    const updates = req.body;
+    const payment = await adminService.updatePaymentStatus(id, updates);
+    res.status(200).json({ message: 'Pago actualizado', data: payment });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const createPayment = async (req, res, next) => {
+  try {
+    const orderId = parseInt(req.params.orderId);
+    const data = req.body;
+    const payment = await adminService.createPayment(orderId, data);
+    res.status(201).json({ message: 'Milestone de pago creado', data: payment });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getAllUsers,
   getUserById,
   updateUser,
   getAllOrders,
   updateOrderStatus,
+  getAllRFQs,
+  getRFQById,
+  forwardQuoteToClient,
+  rejectQuote,
+  getFlaggedChats,
+  notifyScouters,
+  getAllPayments,
+  updatePaymentStatus,
+  createPayment,
 };

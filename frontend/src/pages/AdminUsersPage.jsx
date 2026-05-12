@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { adminApi } from '../api/api';
-import AdminLayout from '../components/AdminLayout';
 
 const ROLES = ['CLIENT', 'SUPPLIER', 'ADMIN'];
 
@@ -54,7 +53,7 @@ const AdminUsersPage = () => {
   };
 
   return (
-    <AdminLayout>
+    <div style={{ padding: '2rem 2rem' }}>
       <div className="page-header">
         <h2>Gestión de Usuarios</h2>
         <span className="status-count">{users.length} usuarios</span>
@@ -134,7 +133,7 @@ const AdminUsersPage = () => {
       {!loading && users.length === 0 && (
         <p className="status-msg">No hay usuarios registrados.</p>
       )}
-    </AdminLayout>
+    </div>
   );
 };
 
