@@ -86,15 +86,35 @@ export default function AdminChatAuditPage() {
                   </div>
                 </div>
 
-                <div style={{ background: '#f1f5f9', padding: '10px', borderRadius: '8px', fontSize: '0.85rem', color: '#334155' }}>
-                  <div style={{ fontWeight: 600, marginBottom: '4px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <MessageCircle size={14} /> Último mensaje marcado:
+                <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <Shield size={14} color="#2563eb" /> REPORTE DE IA
+                    </div>
+                    {order.messages?.[0]?.aiScore > 0 && (
+                      <span style={{ 
+                        fontSize: '0.75rem', 
+                        fontWeight: 700, 
+                        color: order.messages[0].aiScore > 0.5 ? '#dc2626' : '#f59e0b',
+                        background: order.messages[0].aiScore > 0.5 ? '#fee2e2' : '#fef3c7',
+                        padding: '2px 6px',
+                        borderRadius: '4px'
+                      }}>
+                        {Math.round(order.messages[0].aiScore * 100)}% Riesgo
+                      </span>
+                    )}
                   </div>
-                  <div style={{ fontStyle: 'italic', borderLeft: '3px solid #cbd5e1', paddingLeft: '8px', WebkitLineClamp: 2, overflow: 'hidden', display: '-webkit-box', WebkitBoxOrient: 'vertical' }}>
-                    "{order.messages?.[0]?.content}"
+                  
+                  <div style={{ fontSize: '0.85rem', color: '#475569', marginBottom: '8px', lineHeight: '1.4' }}>
+                    <span style={{ fontWeight: 600 }}>Motivo:</span> {order.messages?.[0]?.aiReason || 'Evasión detectada por palabras clave.'}
                   </div>
-                  <div style={{ textAlign: 'right', fontSize: '0.7rem', color: '#94a3b8', marginTop: '6px' }}>
-                    {fmtDate(order.messages?.[0]?.createdAt)}
+
+                  <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontStyle: 'italic', background: '#fff', padding: '8px', borderRadius: '4px', border: '1px dashed #cbd5e1' }}>
+                    Contenido oculto para proteger la privacidad. Haz clic para auditar la conversación completa.
+                  </div>
+
+                  <div style={{ textAlign: 'right', fontSize: '0.7rem', color: '#94a3b8', marginTop: '8px' }}>
+                    Detectado: {fmtDate(order.messages?.[0]?.createdAt)}
                   </div>
                 </div>
               </div>

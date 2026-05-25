@@ -573,6 +573,11 @@ model OrderMessage {
   hasFlaggedWords Boolean @default(false)
   isAdminVisible  Boolean @default(true)
   
+  // AI Audit fields
+  aiScore     Float?   // 0 to 1 risk score
+  aiReason    String?  // Short reason
+  aiAnalysis  String?  // Detailed analysis
+  
   createdAt DateTime @default(now())
 }
 

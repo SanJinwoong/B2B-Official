@@ -44,6 +44,12 @@ export default function OrderChatBox({ orderId, currentRole }) {
     }
   };
 
+  const [revealedMessages, setRevealedMessages] = useState({});
+
+  const toggleReveal = (msgId) => {
+    setRevealedMessages(prev => ({ ...prev, [msgId]: !prev[msgId] }));
+  };
+
   const fmtTime = (d) => new Date(d).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
 
   return (
@@ -55,7 +61,7 @@ export default function OrderChatBox({ orderId, currentRole }) {
         </h3>
         <div style={{ fontSize: '0.75rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}>
           <AlertTriangle size={14} color="#f59e0b" />
-          Auditoría activa
+          Auditoría IA activa
         </div>
       </div>
       
@@ -70,15 +76,19 @@ export default function OrderChatBox({ orderId, currentRole }) {
           messages.map(m => {
             const isMine = m.senderId === user.id;
             const isAdminMessage = m.sender?.role === 'ADMIN';
+            const isFlagged = m.hasFlaggedWords || (m.aiScore > 0.5);
+            const isRevealed = revealedMessages[m.id];
+            const showEthicalMask = currentRole === 'ADMIN' && isFlagged && !isRevealed && !isMine;
 
             return (
               <div key={m.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isMine ? 'flex-end' : 'flex-start' }}>
                 <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '4px', padding: '0 4px' }}>
                   {isMine ? 'Tú' : (isAdminMessage ? 'Soporte B2B' : (currentRole === 'CLIENT' ? 'Proveedor' : 'Cliente'))} • {fmtTime(m.createdAt)}
                 </div>
+                
                 <div style={{
-                  background: isAdminMessage ? '#1e293b' : (isMine ? '#2563eb' : '#fff'),
-                  color: isAdminMessage ? '#fff' : (isMine ? '#fff' : '#0f172a'),
+                  background: isAdminMessage ? '#1e293b' : (isMine ? '#2563eb' : (showEthicalMask ? '#fee2e2' : '#fff')),
+                  color: isAdminMessage ? '#fff' : (isMine ? '#fff' : (showEthicalMask ? '#991b1b' : '#0f172a')),
                   padding: '10px 14px',
                   borderRadius: '16px',
                   borderTopRightRadius: isMine ? '4px' : '16px',
@@ -88,13 +98,52 @@ export default function OrderChatBox({ orderId, currentRole }) {
                   maxWidth: '85%',
                   fontSize: '0.9rem',
                   lineHeight: '1.4',
-                  whiteSpace: 'pre-wrap'
+                  whiteSpace: 'pre-wrap',
+                  position: 'relative'
                 }}>
-                  {m.content}
+                  {showEthicalMask ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, fontSize: '0.8rem' }}>
+                        <AlertTriangle size={14} /> CONTENIDO OCULTO POR ÉTICA
+                      </div>
+                      <div style={{ fontSize: '0.8rem', fontStyle: 'italic', opacity: 0.8 }}>
+                        {m.aiReason || 'La IA ha detectado una posible violación de políticas.'}
+                      </div>
+                      <button 
+                        onClick={() => toggleReveal(m.id)}
+                        style={{ 
+                          background: '#fff', border: '1px solid #fecaca', color: '#dc2626', 
+                          padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600,
+                          cursor: 'pointer', alignSelf: 'flex-start', marginTop: '4px'
+                        }}
+                      >
+                        Revelar mensaje
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      {m.content}
+                      {isRevealed && (
+                        <button 
+                          onClick={() => toggleReveal(m.id)}
+                          style={{ display: 'block', background: 'none', border: 'none', color: '#64748b', fontSize: '0.7rem', padding: 0, marginTop: '8px', cursor: 'pointer', textDecoration: 'underline' }}
+                        >
+                          Ocultar de nuevo
+                        </button>
+                      )}
+                    </>
+                  )}
                 </div>
-                {m.hasFlaggedWords && currentRole === 'ADMIN' && (
+
+                {m.aiScore > 0 && currentRole === 'ADMIN' && (
+                  <div style={{ fontSize: '0.7rem', color: m.aiScore > 0.5 ? '#dc2626' : '#f59e0b', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <Shield size={12} /> IA: {Math.round(m.aiScore * 100)}% riesgo • {m.aiReason}
+                  </div>
+                )}
+                
+                {m.hasFlaggedWords && !m.aiScore && currentRole === 'ADMIN' && (
                   <div style={{ fontSize: '0.7rem', color: '#dc2626', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <AlertTriangle size={12} /> Mensaje marcado por posible evasión.
+                    <AlertTriangle size={12} /> Sistema: Palabra clave detectada.
                   </div>
                 )}
               </div>

@@ -2,6 +2,9 @@ const prisma = require('../config/prisma');
 const mailService = require('./mailer.service');
 const path = require('path');
 const fs = require('fs');
+const { exec } = require('child_process');
+const util = require('util');
+const execPromise = util.promisify(exec);
 
 /**
  * Crea una orden con múltiples productos dentro de una transacción atómica.
@@ -349,6 +352,22 @@ const getOrderMessages = async (orderId, userId, userRole) => {
   });
 };
 
+/**
+ * Ejecuta el script de Python para auditar un mensaje con IA.
+ */
+const runAiAudit = async (content) => {
+  try {
+    const scriptPath = path.join(__dirname, 'ai_audit.py');
+    // Escapar comillas dobles para el comando CLI
+    const escapedContent = content.replace(/"/g, '\\"');
+    const { stdout } = await execPromise(`python "${scriptPath}" "${escapedContent}"`);
+    return JSON.parse(stdout);
+  } catch (err) {
+    console.error('Error en auditoría IA:', err);
+    return { is_evasion: false, score: 0, reason: 'Error al contactar con el servicio de IA.' };
+  }
+};
+
 const sendOrderMessage = async (orderId, senderId, senderRole, content) => {
   const order = await prisma.order.findUnique({
     where: { id: orderId }
@@ -375,6 +394,20 @@ const sendOrderMessage = async (orderId, senderId, senderRole, content) => {
     include: {
       sender: { select: { id: true, name: true, role: true } }
     }
+  });
+
+  // Ejecutar auditoría IA en segundo plano (para no bloquear la respuesta)
+  // Pero lo guardaremos en el mensaje creado
+  runAiAudit(content).then(async (aiResult) => {
+    await prisma.orderMessage.update({
+      where: { id: message.id },
+      data: {
+        aiScore: aiResult.score,
+        aiReason: aiResult.reason,
+        // Si la IA detecta evasión, forzamos hasFlaggedWords a true si no lo estaba
+        hasFlaggedWords: hasFlaggedWords || aiResult.is_evasion
+      }
+    }).catch(err => console.error('Error al actualizar resultado IA:', err));
   });
   
   if (hasFlaggedWords) {
