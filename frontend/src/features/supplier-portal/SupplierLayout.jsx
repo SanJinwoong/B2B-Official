@@ -10,7 +10,7 @@ const NAV = [
   { to: '/proveedor/rfqs',       icon: Zap,             label: 'Oportunidades (RFQs)', badge: 'newRFQs' },
   { to: '/proveedor/pedidos',    icon: Package,         label: 'Mis Pedidos Activos',  badge: null },
   { to: '/proveedor/catalogo',   icon: BookOpen,        label: 'Mi Catálogo',           badge: null },
-  { to: '/proveedor/mensajes',   icon: MessageSquare,   label: 'Mensajería',            badge: 'messages' },
+  { to: '/proveedor/mensajes',   icon: MessageSquare,   label: 'Soporte B2B',            badge: 'messages' },
   { to: '/proveedor/rendimiento',icon: Star,            label: 'Mi Rendimiento',         badge: null },
 ];
 

@@ -9,6 +9,7 @@ export default function AdminFinancesPage() {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(null);
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null, status: null });
 
   const fetchPayments = async () => {
     try {
@@ -26,8 +27,15 @@ export default function AdminFinancesPage() {
     fetchPayments();
   }, []);
 
-  const handleStatusChange = async (id, status) => {
-    if (!window.confirm(`¿Marcar este pago como ${status}?`)) return;
+  const requestStatusChange = (id, status) => {
+    setConfirmModal({ isOpen: true, id, status });
+  };
+
+  const confirmStatusChange = async () => {
+    const { id, status } = confirmModal;
+    setConfirmModal({ isOpen: false, id: null, status: null });
+    if (!id) return;
+    
     setUpdating(id);
     try {
       await adminApi.updatePaymentStatus(id, { status }); // Ensure we have this in api.js
@@ -146,7 +154,7 @@ export default function AdminFinancesPage() {
                       <button 
                         className="aa-btn aa-btn-sm" 
                         disabled={updating === p.id}
-                        onClick={() => handleStatusChange(p.id, 'PAID')}
+                        onClick={() => requestStatusChange(p.id, 'PAID')}
                       >
                         {updating === p.id ? '...' : 'Marcar Pagado'}
                       </button>
@@ -154,7 +162,7 @@ export default function AdminFinancesPage() {
                     {p.status === 'PAID' && (
                       <button 
                         className="aa-btn aa-btn-ghost aa-btn-sm" 
-                        onClick={() => handleStatusChange(p.id, 'PENDING')}
+                        onClick={() => requestStatusChange(p.id, 'PENDING')}
                       >
                         Deshacer
                       </button>
@@ -166,6 +174,38 @@ export default function AdminFinancesPage() {
           </tbody>
         </table>
       </div>
+
+      {confirmModal.isOpen && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(4px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: '#fff', padding: '32px', borderRadius: '16px', maxWidth: '400px', width: '90%', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)', textAlign: 'center', animation: 'modalFadeIn 0.2s ease-out' }}>
+            <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+              <CheckCircle size={24} color="#2563eb" />
+            </div>
+            <h3 style={{ margin: '0 0 8px 0', fontSize: '1.25rem', color: '#0f172a' }}>Confirmar Acción</h3>
+            <p style={{ margin: '0 0 24px 0', color: '#64748b', lineHeight: '1.5' }}>
+              ¿Estás seguro que deseas marcar el estado de este pago como <strong style={{ color: '#0f172a' }}>{confirmModal.status}</strong>?
+            </p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <button 
+                onClick={() => setConfirmModal({ isOpen: false, id: null, status: null })}
+                style={{ padding: '10px 20px', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', fontWeight: 600, cursor: 'pointer', flex: 1, transition: 'all 0.2s' }}
+                onMouseOver={e => e.currentTarget.style.background = '#f8fafc'}
+                onMouseOut={e => e.currentTarget.style.background = '#fff'}
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={confirmStatusChange}
+                style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', background: '#2563eb', color: '#fff', fontWeight: 600, cursor: 'pointer', flex: 1, transition: 'background 0.2s' }}
+                onMouseOver={e => e.currentTarget.style.background = '#1d4ed8'}
+                onMouseOut={e => e.currentTarget.style.background = '#2563eb'}
+              >
+                Confirmar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

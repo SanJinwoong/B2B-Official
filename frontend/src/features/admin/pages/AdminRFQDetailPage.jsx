@@ -12,6 +12,7 @@ const AdminRFQDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [marginPct, setMarginPct] = useState(15);
+  const [editQuoteData, setEditQuoteData] = useState({});
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -33,11 +34,22 @@ const AdminRFQDetailPage = () => {
 
   const handleForward = async (quoteId) => {
     try {
-      await adminApi.forwardQuote(quoteId, {});
+      const updates = editQuoteData[quoteId] || {};
+      await adminApi.forwardQuote(quoteId, updates);
       loadData(); // refresh
     } catch (err) {
       alert('Error al liberar la cotización.');
     }
+  };
+
+  const handleEditChange = (quoteId, field, value) => {
+    setEditQuoteData(prev => ({
+      ...prev,
+      [quoteId]: {
+        ...prev[quoteId],
+        [field]: Number(value)
+      }
+    }));
   };
 
   const handleReject = async (quoteId) => {
@@ -134,8 +146,33 @@ const AdminRFQDetailPage = () => {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', background: 'var(--bg)', padding: '1rem', borderRadius: '8px' }}>
                   <div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 'bold' }}>Costo del Proveedor</div>
-                    <div style={{ fontSize: '1.1rem', fontWeight: '600' }}>{fmtCurrency(quote.totalPrice)}</div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-subtle)' }}>{fmtCurrency(quote.unitPrice)} / {rfq.unit}</div>
+                    {isPending ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <span style={{ fontSize: '0.8rem', width: '60px', color: 'var(--text-subtle)', fontWeight: 600 }}>Total:</span>
+                          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                            <span style={{ position: 'absolute', left: '10px', color: 'var(--text-subtle)', fontSize: '0.9rem', fontWeight: 600 }}>$</span>
+                            <input type="number" className="aa-input" style={{ padding: '0.4rem 0.6rem 0.4rem 22px', width: '130px', fontSize: '0.95rem', fontWeight: 600, border: '1px solid #cbd5e1', borderRadius: '6px', background: '#f8fafc' }} 
+                              value={editQuoteData[quote.id]?.totalPrice ?? quote.totalPrice} 
+                              onChange={e => handleEditChange(quote.id, 'totalPrice', e.target.value)} />
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <span style={{ fontSize: '0.8rem', width: '60px', color: 'var(--text-subtle)', fontWeight: 600 }}>Unitario:</span>
+                          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                            <span style={{ position: 'absolute', left: '10px', color: 'var(--text-subtle)', fontSize: '0.9rem', fontWeight: 600 }}>$</span>
+                            <input type="number" className="aa-input" style={{ padding: '0.4rem 0.6rem 0.4rem 22px', width: '130px', fontSize: '0.95rem', fontWeight: 600, border: '1px solid #cbd5e1', borderRadius: '6px', background: '#f8fafc' }} 
+                              value={editQuoteData[quote.id]?.unitPrice ?? quote.unitPrice} 
+                              onChange={e => handleEditChange(quote.id, 'unitPrice', e.target.value)} />
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div style={{ fontSize: '1.1rem', fontWeight: '600' }}>{fmtCurrency(quote.totalPrice)}</div>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-subtle)' }}>{fmtCurrency(quote.unitPrice)} / {rfq.unit}</div>
+                      </>
+                    )}
                   </div>
                   
                   {!isRejected && (
@@ -145,9 +182,15 @@ const AdminRFQDetailPage = () => {
                         <span style={{ color: 'var(--text-subtle)', fontWeight: 'normal' }}>(+ Margen {marginPct}%)</span>
                       </div>
                       <div style={{ fontSize: '1.2rem', fontWeight: '800', color: 'var(--text)' }}>
-                        {fmtCurrency(currentClientTotal)}
+                        {fmtCurrency(
+                          (editQuoteData[quote.id]?.totalPrice ?? quote.totalPrice) * (1 + marginPct / 100)
+                        )}
                       </div>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--text-subtle)' }}>{fmtCurrency(currentClientUnit)} / {rfq.unit}</div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-subtle)' }}>
+                        {fmtCurrency(
+                          (editQuoteData[quote.id]?.unitPrice ?? quote.unitPrice) * (1 + marginPct / 100)
+                        )} / {rfq.unit}
+                      </div>
                     </div>
                   )}
                 </div>

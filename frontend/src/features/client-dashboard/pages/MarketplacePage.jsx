@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Search, ShoppingCart, Heart, Star, Package, X, Clock, ChevronLeft, ChevronRight, ShoppingBag, Store, Factory, Utensils, Scissors, Truck, FlaskConical, Zap, Hammer, ClipboardList, Trophy, Sparkles } from 'lucide-react';
+import { Search, ShoppingCart, Heart, Star, Package, X, Clock, ChevronLeft, ChevronRight, ShoppingBag, Store, Factory, Utensils, Scissors, Truck, FlaskConical, Zap, Hammer, ClipboardList, Trophy, Sparkles, ShieldCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { marketplaceApi } from '../../../api/api';
 import { useAuth } from '../../../context/AuthContext';
@@ -95,7 +95,9 @@ function ProductCard({ product, inWishlist, onAddCart, onToggleWishlist }) {
 
       {/* Body */}
       <div className="mk2-card-body">
-        <div className="mk2-card-supplier">{product.supplierName}</div>
+        <div className="mk2-card-supplier" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <ShieldCheck size={14} color="#10b981" /> {product.supplierName}
+        </div>
         <div className="mk2-card-name" onClick={() => navigate(`/client/marketplace/${product.id}`)}>
           {product.name}
         </div>

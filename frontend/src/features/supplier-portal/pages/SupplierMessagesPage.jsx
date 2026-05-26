@@ -6,7 +6,7 @@ import { useAuth } from '../../../context/AuthContext';
 function fmtTime(d){ return new Date(d).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}); }
 function fmtDate(d){ return new Date(d).toLocaleDateString('es-MX',{day:'numeric',month:'short'}); }
 
-export default function ClientMessagesPage() {
+export default function SupplierMessagesPage() {
   const { user } = useAuth();
   const [msgs,    setMsgs]    = useState([]);
   const [loading, setLoading] = useState(true);

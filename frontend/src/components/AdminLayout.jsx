@@ -2,16 +2,18 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   ShoppingCart, Users, Settings,
-  Store, FileText, LogOut, Box, ShieldAlert, DollarSign
+  Store, FileText, LogOut, Box, ShieldAlert, DollarSign, LayoutDashboard, MessageCircle
 } from 'lucide-react';
 import './AdminSidebar.css';
 
 const NAV_ITEMS = [
+  { to: '/admin/dashboard',    label: 'Dashboard',      icon: LayoutDashboard },
   { to: '/admin/applications', label: 'Proveedores',    icon: Store           },
   { to: '/admin/orders',       label: 'Pedidos',        icon: ShoppingCart    },
   { to: '/admin/finances',     label: 'Finanzas B2B',   icon: DollarSign      },
   { to: '/admin/rfqs',         label: 'Cotizaciones',   icon: FileText        },
   { to: '/admin/chats-audit',  label: 'Auditoría B2B',  icon: ShieldAlert     },
+  { to: '/admin/support-chats',label: 'Soporte B2B',    icon: MessageCircle   },
   { to: '/admin/users',        label: 'Clientes',       icon: Users           },
   { to: '/admin/scouters',     label: 'Scouters',       icon: Users           },
   { to: '/admin/config',       label: 'Configuracion',  icon: Settings        },

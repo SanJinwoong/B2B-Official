@@ -185,10 +185,26 @@ const forwardQuoteToClient = async (quoteId, updates = {}) => {
   if (updates.totalPrice !== undefined) data.totalPrice = updates.totalPrice;
   if (updates.samplePrice !== undefined) data.samplePrice = updates.samplePrice;
 
-  return prisma.rFQQuote.update({
+  const updatedQuote = await prisma.rFQQuote.update({
     where: { id: quoteId },
     data,
+    include: { rfq: true }
   });
+
+  const { notifyUser } = require('./notification.service');
+  const wasEdited = updates.unitPrice !== undefined || updates.totalPrice !== undefined;
+  
+  await notifyUser(
+    quote.supplierId,
+    'QUOTE_FORWARDED',
+    wasEdited ? 'Tu cotización ha sido aprobada con ajustes' : 'Tu cotización ha sido aprobada',
+    wasEdited 
+      ? `La plataforma ha aprobado tu cotización para la solicitud ${updatedQuote.rfq.rfqNumber} con ajustes en el precio final de venta. Esto no afecta tu margen de ganancia original.`
+      : `Tu cotización para la solicitud ${updatedQuote.rfq.rfqNumber} ha sido aprobada y enviada al cliente.`,
+    `/proveedor/rfqs`
+  );
+
+  return updatedQuote;
 };
 
 const rejectQuote = async (quoteId) => {
@@ -302,6 +318,65 @@ const createPayment = async (orderId, data) => {
   });
 };
 
+// ─── DASHBOARD ────────────────────────────────────────────────────────────────
+const getDashboardStats = async () => {
+  const [
+    activeOrders,
+    pendingOrders,
+    delayedOrders,
+    activeSuppliers,
+    ordersData
+  ] = await Promise.all([
+    prisma.order.count({ where: { status: { in: ['IN_PRODUCTION', 'QUALITY_CONTROL', 'IN_TRANSIT'] } } }),
+    prisma.order.count({ where: { status: 'PENDING' } }),
+    prisma.order.count({ where: { deliveryDate: { lt: new Date() }, status: { not: 'DELIVERED' } } }),
+    prisma.user.count({ where: { role: 'SUPPLIER', isActive: true } }),
+    prisma.order.groupBy({
+      by: ['status'],
+      _count: { id: true }
+    })
+  ]);
+
+  const recentOrders = await prisma.order.findMany({
+    take: 5,
+    orderBy: { createdAt: 'desc' },
+    include: { 
+      client: { 
+        select: { 
+          name: true,
+          clientProfile: { select: { companyName: true } }
+        } 
+      }, 
+      orderItems: { include: { product: true } } 
+    }
+  });
+
+  // Mock performance for pie chart (in a real app this would be calculated from historical delivery data)
+  const supplierPerformance = [
+    { name: '1-3 retrasos', value: 40, color: '#f59e0b' },
+    { name: 'Sin retrasos', value: 20, color: '#10b981' },
+    { name: '4+ retrasos', value: 40, color: '#ef4444' }
+  ];
+
+  const ordersByStatus = ordersData.map(o => ({
+    status: o.status,
+    count: o._count.id
+  }));
+
+  return {
+    summary: { activeOrders, pendingOrders, delayedOrders, activeSuppliers },
+    charts: { ordersByStatus, supplierPerformance },
+    recentOrders: recentOrders.map(o => ({
+      id: o.id,
+      orderNumber: o.orderNumber,
+      clientName: o.client?.clientProfile?.companyName || o.client?.name || 'Cliente B2B',
+      description: o.orderItems[0] ? `${o.orderItems[0].product.name} - ${o.orderItems[0].quantity} unidades` : 'Pedido especial',
+      amount: o.totalAmount,
+      status: o.status
+    }))
+  };
+};
+
 module.exports = {
   getAllUsers,
   getUserById,
@@ -317,4 +392,5 @@ module.exports = {
   getAllPayments,
   updatePaymentStatus,
   createPayment,
+  getDashboardStats,
 };

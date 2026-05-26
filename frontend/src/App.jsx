@@ -18,11 +18,13 @@ import RegistrationPage       from './features/supplier-registration/pages/Regis
 import CorrectionPage         from './features/supplier-registration/pages/CorrectionPage';
 import ApplicationsListPage   from './features/admin/pages/ApplicationsListPage';
 import ApplicationDetailPage  from './features/admin/pages/ApplicationDetailPage';
+import AdminDashboardPage     from './features/admin/pages/AdminDashboardPage';
 import ScoutersPage           from './features/admin/pages/ScoutersPage';
 import AdminConfigPage        from './features/admin/pages/AdminConfigPage';
 import AdminRFQsPage          from './features/admin/pages/AdminRFQsPage';
 import AdminRFQDetailPage     from './features/admin/pages/AdminRFQDetailPage';
 import AdminChatAuditPage     from './features/admin/pages/AdminChatAuditPage';
+import AdminSupportChatsPage  from './features/admin/pages/AdminSupportChatsPage';
 import AdminFinancesPage      from './features/admin/pages/AdminFinancesPage';
 // Client Dashboard
 import ClientLayout           from './features/client-dashboard/layout/ClientLayout';
@@ -44,6 +46,7 @@ import SupplierOrdersPage     from './features/supplier-portal/pages/SupplierOrd
 import SupplierPerformancePage from './features/supplier-portal/pages/SupplierPerformancePage';
 import SupplierSettingsPage    from './features/supplier-portal/pages/SupplierSettingsPage';
 import SupplierOpportunitiesPage from './features/supplier-portal/pages/SupplierOpportunitiesPage';
+import SupplierMessagesPage      from './features/supplier-portal/pages/SupplierMessagesPage';
 
 
 // Hide the top Navbar when we are inside the admin shell (has its own sidebar)
@@ -59,7 +62,7 @@ const RootRedirect = () => {
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   
   switch (user?.role) {
-    case 'ADMIN': return <Navigate to="/admin/applications" replace />;
+    case 'ADMIN': return <Navigate to="/admin/dashboard" replace />;
     case 'SUPPLIER': return <Navigate to="/proveedor/dashboard" replace />;
     case 'CLIENT': return <Navigate to="/client/marketplace" replace />;
     default: return <Navigate to="/login" replace />;
@@ -123,7 +126,8 @@ const App = () => {
               </PrivateRoute>
             }
           >
-            <Route index                  element={<Navigate to="applications" replace />} />
+            <Route index                  element={<Navigate to="dashboard" replace />} />
+            <Route path="dashboard"       element={<AdminDashboardPage />} />
             <Route path="applications"    element={<ApplicationsListPage />} />
             <Route path="applications/:id" element={<ApplicationDetailPage />} />
             <Route path="users"           element={<AdminUsersPage />} />
@@ -131,6 +135,7 @@ const App = () => {
             <Route path="rfqs"            element={<AdminRFQsPage />} />
             <Route path="rfqs/:id"        element={<AdminRFQDetailPage />} />
             <Route path="chats-audit"     element={<AdminChatAuditPage />} />
+            <Route path="support-chats"   element={<AdminSupportChatsPage />} />
             <Route path="finances"        element={<AdminFinancesPage />} />
             <Route path="scouters"        element={<ScoutersPage />} />
             <Route path="config"          element={<AdminConfigPage />} />
@@ -178,7 +183,7 @@ const App = () => {
             <Route path="pedidos"    element={<SupplierOrdersPage />} />
             <Route path="catalogo"   element={<SupplierCatalogPage />} />
             <Route path="catalogo/:id" element={<ProductDetailPage />} />
-            <Route path="mensajes"   element={<SupplierDashboardPage />} />
+            <Route path="mensajes"   element={<SupplierMessagesPage />} />
             <Route path="rendimiento" element={<SupplierPerformancePage />} />
             <Route path="configuracion" element={<SupplierSettingsPage />} />
           </Route>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ShoppingCart, Heart, Package, ArrowLeft, ChevronUp, ChevronDown, CheckCircle, Clock, ChevronLeft, ChevronRight, XCircle } from 'lucide-react';
+import { ShoppingCart, Heart, Package, ArrowLeft, ChevronUp, ChevronDown, CheckCircle, Clock, ChevronLeft, ChevronRight, XCircle, ShieldCheck } from 'lucide-react';
 import { marketplaceApi } from '../../../api/api';
 import { useAuth } from '../../../context/AuthContext';
 import { triggerCartAnimation } from './MarketplacePage';
@@ -171,7 +171,9 @@ export default function ProductDetailPage() {
 
         {/* ── RIGHT: INFO & ACTIONS ── */}
         <div className="pdp-info">
-          <div className="pdp-brand-tag">{product.supplierName}</div>
+          <div className="pdp-brand-tag" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            <ShieldCheck size={16} color="#10b981" /> {product.supplierName}
+          </div>
           <h1 className="pdp-title">{product.name}</h1>
           <div className="pdp-price">
             {fmt(effectivePrice)} <span>/{product.unit}</span>

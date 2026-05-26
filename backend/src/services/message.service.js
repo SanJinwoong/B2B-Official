@@ -33,10 +33,16 @@ const sendMessage = async (clientId, senderId, content) => {
  * Se llama cuando el cliente abre el chat.
  */
 const markAsRead = async (clientId, readerRole) => {
-  if (readerRole === 'CLIENT') {
-    // El cliente lee → marca mensajes del admin
+  if (readerRole !== 'ADMIN') {
+    // El cliente o proveedor lee → marca mensajes del admin
     return prisma.message.updateMany({
-      where: { clientId, isRead: false, sender: { role: { not: 'CLIENT' } } },
+      where: { clientId, isRead: false, sender: { role: 'ADMIN' } },
+      data: { isRead: true },
+    });
+  } else {
+    // El admin lee → marca mensajes del cliente/proveedor
+    return prisma.message.updateMany({
+      where: { clientId, isRead: false, sender: { role: { not: 'ADMIN' } } },
       data: { isRead: true },
     });
   }
@@ -47,8 +53,29 @@ const markAsRead = async (clientId, readerRole) => {
  */
 const getUnreadCount = async (clientId) => {
   return prisma.message.count({
-    where: { clientId, isRead: false, sender: { role: { not: 'CLIENT' } } },
+    where: { clientId, isRead: false, sender: { role: 'ADMIN' } },
   });
 };
 
-module.exports = { getMessages, sendMessage, markAsRead, getUnreadCount };
+/**
+ * Obtiene la lista de usuarios (clientes y proveedores) que han interactuado por mensaje.
+ */
+const getAdminSupportChats = async () => {
+  // Encontrar todos los clientIds únicos en la tabla Message
+  const messages = await prisma.message.findMany({
+    distinct: ['clientId'],
+    select: {
+      clientId: true,
+      createdAt: true,
+      client: { select: { id: true, name: true, role: true, email: true } }
+    },
+    orderBy: { createdAt: 'desc' }
+  });
+  
+  return messages.map(m => ({
+    user: m.client,
+    lastActivity: m.createdAt
+  }));
+};
+
+module.exports = { getMessages, sendMessage, markAsRead, getUnreadCount, getAdminSupportChats };

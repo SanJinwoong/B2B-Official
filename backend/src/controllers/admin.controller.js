@@ -188,6 +188,17 @@ const createPayment = async (req, res, next) => {
   }
 };
 
+// ─── DASHBOARD ───────────────────────────────────────────────────────────────
+
+const getDashboard = async (req, res, next) => {
+  try {
+    const stats = await adminService.getDashboardStats();
+    res.status(200).json({ data: stats });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getAllUsers,
   getUserById,
@@ -203,4 +214,5 @@ module.exports = {
   getAllPayments,
   updatePaymentStatus,
   createPayment,
+  getDashboard,
 };

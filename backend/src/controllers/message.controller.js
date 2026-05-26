@@ -3,7 +3,7 @@ const messageService = require('../services/message.service');
 const getMessages = async (req, res, next) => {
   try {
     // CLIENT ve su propio hilo; ADMIN pasa ?clientId=X
-    const clientId = req.user.role === 'CLIENT'
+    const clientId = req.user.role !== 'ADMIN'
       ? req.user.id
       : Number(req.query.clientId);
     if (!clientId) return res.status(400).json({ message: 'clientId requerido.' });
@@ -16,7 +16,7 @@ const getMessages = async (req, res, next) => {
 
 const sendMessage = async (req, res, next) => {
   try {
-    const clientId = req.user.role === 'CLIENT'
+    const clientId = req.user.role !== 'ADMIN'
       ? req.user.id
       : Number(req.body.clientId);
     if (!clientId) return res.status(400).json({ message: 'clientId requerido.' });
@@ -34,4 +34,11 @@ const getUnreadCount = async (req, res, next) => {
   } catch (e) { next(e); }
 };
 
-module.exports = { getMessages, sendMessage, getUnreadCount };
+const getAdminSupportChats = async (req, res, next) => {
+  try {
+    const chats = await messageService.getAdminSupportChats();
+    res.json({ data: chats });
+  } catch (e) { next(e); }
+};
+
+module.exports = { getMessages, sendMessage, getUnreadCount, getAdminSupportChats };

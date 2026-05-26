@@ -12,7 +12,7 @@ const NAV = [
   { to: '/client/marketplace',label: 'Marketplace B2B',       icon: Package },
   { to: '/client/rfqs',     label: 'Cotizaciones',        icon: FileText },
   { to: '/client/orders',   label: 'Mis Pedidos',         icon: Package },
-  { to: '/client/messages', label: 'Centro de Mensajes',  icon: MessageCircle, badge: true },
+  { to: '/client/messages', label: 'Soporte B2B',  icon: MessageCircle, badge: true },
   { to: '/client/payments', label: 'Facturación y Pagos', icon: CreditCard },
   { to: '/client/empresa',  label: 'Mi Empresa',          icon: Building2 },
 ];

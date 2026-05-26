@@ -15,7 +15,14 @@ export default function AdminChatAuditPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const fmtDate = (d) => new Date(d).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const fmtDate = (d) => {
+    if (!d) return 'Fecha no disponible';
+    try {
+      return new Date(d).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    } catch (e) {
+      return 'Fecha inválida';
+    }
+  };
 
   const totalEvasions = flaggedOrders.reduce((acc, order) => acc + (order.messages?.length || 0), 0);
 

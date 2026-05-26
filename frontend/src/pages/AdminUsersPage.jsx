@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { adminApi } from '../api/api';
 
 const ROLES = ['CLIENT', 'SUPPLIER', 'ADMIN'];
@@ -109,8 +110,8 @@ const AdminUsersPage = () => {
                   <td className="td-center">{user._count?.orders ?? 0}</td>
                   <td className="td-center">{user._count?.products ?? 0}</td>
 
-                  {/* ── Botón activar / desactivar ── */}
-                  <td>
+                  {/* ── Botón activar / desactivar y Chat ── */}
+                  <td style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
                     <button
                       className={`btn btn-sm ${user.isActive ? 'btn-danger' : 'btn-success'}`}
                       disabled={processing[user.id]}
@@ -122,6 +123,11 @@ const AdminUsersPage = () => {
                         ? 'Desactivar'
                         : 'Activar'}
                     </button>
+                    {user.role !== 'ADMIN' && (
+                      <Link to={`/admin/support-chats?userId=${user.id}`} className="btn btn-sm btn-primary" style={{ textDecoration: 'none' }}>
+                        Chat Privado
+                      </Link>
+                    )}
                   </td>
                 </tr>
               ))}

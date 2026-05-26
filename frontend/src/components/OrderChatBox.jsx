@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, AlertTriangle, MessageCircle } from 'lucide-react';
+import { Send, AlertTriangle, MessageCircle, Shield } from 'lucide-react';
 import { orderMessagesApi } from '../api/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -50,7 +50,12 @@ export default function OrderChatBox({ orderId, currentRole }) {
     setRevealedMessages(prev => ({ ...prev, [msgId]: !prev[msgId] }));
   };
 
-  const fmtTime = (d) => new Date(d).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+  const fmtTime = (d) => {
+    if (!d) return '--:--';
+    try {
+      return new Date(d).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+    } catch(e) { return '--:--'; }
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '450px', background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>

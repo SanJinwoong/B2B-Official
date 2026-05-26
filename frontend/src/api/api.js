@@ -104,6 +104,9 @@ export const ordersApi = {
 // ─── Funciones de Administración ─────────────────────────────────────────────
 
 export const adminApi = {
+  // Dashboard
+  getDashboardStats: () => api.get('/admin/dashboard'),
+
   // Usuarios
   getAllUsers: () => api.get('/admin/users'),
   getUserById: (id) => api.get(`/admin/users/${id}`),
@@ -176,6 +179,9 @@ export const messageApi = {
   getMessages:  () =>           api.get('/messages'),
   send:         (content) =>    api.post('/messages', { content }),
   getUnread:    () =>           api.get('/messages/unread'),
+  getAdminMessages: (clientId) => api.get(`/messages?clientId=${clientId}`),
+  sendAdminMessage: (clientId, content) => api.post('/messages', { clientId, content }),
+  getAdminChats: () => api.get('/messages/admin/chats'),
 };
 
 // ─── Dashboard Cliente — Pagos ────────────────────────────────────────────────

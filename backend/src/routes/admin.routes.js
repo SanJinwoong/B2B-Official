@@ -17,6 +17,9 @@ const router = Router();
 // ─────────────────────────────────────────────────────────────────────────────
 router.use(authenticate, authorize('ADMIN'));
 
+// ── Dashboard ─────────────────────────────────────────────────────────────────
+router.get('/dashboard', adminController.getDashboard);
+
 // ── Gestión de usuarios ───────────────────────────────────────────────────────
 
 // GET  /api/admin/users          → lista todos los usuarios

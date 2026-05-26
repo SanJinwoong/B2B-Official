@@ -353,18 +353,43 @@ const getOrderMessages = async (orderId, userId, userRole) => {
 };
 
 /**
- * Ejecuta el script de Python para auditar un mensaje con IA.
+ * Ejecuta la auditoría con IA local (Ollama) sin necesidad de Python.
  */
 const runAiAudit = async (content) => {
   try {
-    const scriptPath = path.join(__dirname, 'ai_audit.py');
-    // Escapar comillas dobles para el comando CLI
-    const escapedContent = content.replace(/"/g, '\\"');
-    const { stdout } = await execPromise(`python "${scriptPath}" "${escapedContent}"`);
-    return JSON.parse(stdout);
+    const system_prompt = 
+      "Eres un auditor de seguridad experto para una plataforma B2B. " +
+      "Tu tarea es detectar intentos de EVASIÓN DE COMISIÓN. " +
+      "Esto ocurre cuando los usuarios intercambian datos de contacto (WhatsApp, teléfono, email, redes sociales) " +
+      "o proponen pagos fuera de la plataforma. " +
+      "Responde EXCLUSIVAMENTE en formato JSON válido con esta estructura: " +
+      '{"is_evasion": boolean, "score": float (0-1), "reason": "breve explicación en español"}. ' +
+      "No incluyas explicaciones adicionales fuera del JSON.";
+
+    const response = await fetch("http://localhost:11434/api/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "llama3",
+        prompt: `${system_prompt}\n\nAnaliza este mensaje: '${content}'`,
+        stream: false,
+        format: "json"
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return JSON.parse(data.response);
   } catch (err) {
-    console.error('Error en auditoría IA:', err);
-    return { is_evasion: false, score: 0, reason: 'Error al contactar con el servicio de IA.' };
+    console.error('Error en auditoría IA (Ollama):', err.message);
+    return { 
+      is_evasion: false, 
+      score: 0, 
+      reason: 'No se pudo conectar con Ollama. Asegúrate de tenerlo abierto y el modelo descargado.' 
+    };
   }
 };
 
@@ -419,7 +444,7 @@ const sendOrderMessage = async (orderId, senderId, senderRole, content) => {
           type: 'FLAGGED_MESSAGE',
           title: 'Alerta de Evasión Detectada',
           message: `El usuario ${message.sender.name} ha usado palabras prohibidas en el chat de la orden #${order.orderNumber || orderId}.`,
-          link: `/admin/orders/${orderId}`
+          link: `/admin/chats-audit`
         }
       });
     }
